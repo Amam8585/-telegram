@@ -102,7 +102,7 @@ $TXT=[
 'https://t.me/{bot_username}?start=get_{seller_token}'."\n".
 '────────────────────────────'."\n".
 '⚠️ ┇ <b>توجه:</b> هیچ اطلاعاتی مانند جیمیل، رمز یا کد را در گروه یا پیوی ارسال نکنید',
-'bot_username'=>'Ariansupportbot'
+'bot_username'=>'Uwhehshshhbot'
 ];
 $BTN=[
 'google'=>'گوگل',
