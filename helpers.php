@@ -25,3 +25,23 @@ function parse_start($p){if(preg_match('/^get_([A-Za-z0-9]+)$/',$p,$m))return ['
 function find_chat_by_token($tok){$files=list_plan_files();foreach($files as $f){$a=@json_decode(@file_get_contents($f),true);if(!is_array($a))continue;$lt=$a['link_tokens']??null;if(is_array($lt)){if(($lt['buyer']??'')===$tok)return ['chat_id'=>str_replace(['plan_','.json'],['',''],basename($f)),'role'=>'buyer'];if(($lt['seller']??'')===$tok)return ['chat_id'=>str_replace(['plan_','.json'],['',''],basename($f)),'role'=>'seller'];}}return null;}
 function base_url_here(){$scheme=(!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off')?'https':'http';$host=$_SERVER['HTTP_HOST']??'';$path=rtrim(dirname($_SERVER['SCRIPT_NAME']??''),'/');return $scheme.'://'.$host.$path;}
 function build_zp_link($cid,$amount_toman,$payer_id){$st=load_state($cid);$base_total=is_array($st)?(int)($st['total']??get_total($st)):(int)$amount_toman;$gw_fee=calc_gateway_fee_toman($base_total);$pay_toman=$base_total+$gw_fee;if(is_array($st)){$st['pay_method']='auto';$st['gateway_fee']=$gw_fee;$st['total_with_gateway']=$pay_toman;save_state($cid,$st);}ensure_dir();$ordersFile=data_dir().'/zp_orders.json';$orders=@json_decode(@file_get_contents($ordersFile),true);if(!is_array($orders))$orders=[];$code=bin2hex(random_bytes(6));$orders[$code]=['cid'=>$cid,'payer'=>$payer_id,'amount_toman'=>$pay_toman,'gateway_fee'=>$gw_fee,'created'=>time()];@file_put_contents($ordersFile,json_encode($orders,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),LOCK_EX);$amount_rial=$pay_toman*10;$base=base_url_here();$url=$base.'/zp_req.php?chat_id='.rawurlencode((string)$payer_id).'&amount='.$amount_rial;return ['ok'=>true,'url'=>$url,'code'=>$code,'toman'=>$pay_toman,'gateway_fee'=>$gw_fee];}
+function admin_flags_path(){ensure_dir();return data_dir().'/admin_flags.json';}
+function admin_flags_all(){
+$path=admin_flags_path();
+if(file_exists($path)){
+$json=file_get_contents($path);
+$data=json_decode($json,true);
+if(is_array($data))return $data;
+}
+return [];
+}
+function admin_flags_save(array $flags){
+if(!$flags){
+$path=admin_flags_path();
+if(file_exists($path))@unlink($path);
+return;
+}
+file_put_contents(admin_flags_path(),json_encode($flags,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),LOCK_EX);
+}
+function admin_flags_is_disabled($name){$flags=admin_flags_all();return (bool)($flags[$name]??false);}
+function admin_flags_toggle($name){$flags=admin_flags_all();$current=(bool)($flags[$name]??false);$disabled=!$current;if($disabled){$flags[$name]=true;}else{unset($flags[$name]);}$path_flags=$flags;admin_flags_save($path_flags);return ['flags'=>$path_flags,'disabled'=>$disabled];}
