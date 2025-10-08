@@ -1,0 +1,13 @@
+<?php
+define('BOT_TOKEN','8127417585:AAETDsYXQo1tKoK1gJncrue1-ao8U472AmA');
+define('ADMIN_ID','5469468358');
+define('ZP_MERCHANT_ID','6315601e-880b-4370-a022-f97da548bd87');
+define('BOT_USERNAME','Ariansupportbot');
+define('CARD_NUMBER','6219861860522605');
+if(!defined('BASE_URL')){
+$scheme=(!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off')?'https':'http';
+$host=$_SERVER['HTTP_HOST']??'';
+$script=$_SERVER['SCRIPT_NAME']??'';
+$base=rtrim(str_replace(basename($script),'',$script),'/');
+define('BASE_URL',$host?($scheme.'://'.$host.$base):'');
+}
