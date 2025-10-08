@@ -251,8 +251,8 @@ $mid=$msg['message_id']??0;
 $data=$cb['data']??'';
 if(!$cid){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
 $st=load_state($cid);
-if(!$st){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
 if(admin_on_callback($data,$uid,$qid,$cid,$mid,$st))return;
+if(!$st){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
 if(in_array($data,['tgl_act','tgl_fb','tgl_gg','tgl_kyc','tgl_misc','ack_go','lock'])){
 if(($st['phase']??'')!=='rules'){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
 if($data==='lock'){api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT['lock_btn']]);return;}
