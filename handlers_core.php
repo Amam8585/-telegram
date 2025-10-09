@@ -54,6 +54,49 @@ if(!$st||($st['phase']??'')==='done'){sleep(6);start_plan_now($cid,$chat,0);}
 @file_put_contents($apf,json_encode($rec,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),LOCK_EX);
 }
 }
+function user_bridge_forward($uid,$txt){
+global $TXT;
+$trim=trim($txt);
+if($trim===''){return false;}
+$lower=mb_strtolower($trim,'UTF-8');
+$files=list_plan_files();
+foreach($files as $f){
+$a=@json_decode(@file_get_contents($f),true);
+if(!is_array($a))continue;
+$br=$a['bridge']??null;
+if(!is_array($br)||!($br['on']??false))continue;
+$admin_id=(int)($br['admin']??0);
+if($admin_id<=0)continue;
+$side=$br['side']??'';
+$gid=(int)($br['gid']??0);
+if($side==='buyer'&&$uid===($a['buyer_id']??-1)){
+if($lower==='done'){
+$a['bridge']['on']=false;
+save_state($gid,$a);
+api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['bridge_finished_user'],'parse_mode'=>'HTML']);
+api('sendMessage',['chat_id'=>$admin_id,'text'=>$TXT['bridge_finished'],'parse_mode'=>'HTML']);
+return true;
+}
+api('sendMessage',['chat_id'=>$admin_id,'text'=>$TXT['reply_from_buyer_prefix'].$txt,'parse_mode'=>'HTML']);
+api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['bridge_forwarded'],'parse_mode'=>'HTML']);
+return true;
+}
+if($side==='seller'&&$uid===($a['seller_id']??-1)){
+if($lower==='done'){
+$a['bridge']['on']=false;
+save_state($gid,$a);
+api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['bridge_finished_user'],'parse_mode'=>'HTML']);
+api('sendMessage',['chat_id'=>$admin_id,'text'=>$TXT['bridge_finished'],'parse_mode'=>'HTML']);
+return true;
+}
+api('sendMessage',['chat_id'=>$admin_id,'text'=>$TXT['reply_from_seller_prefix'].$txt,'parse_mode'=>'HTML']);
+api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['bridge_forwarded'],'parse_mode'=>'HTML']);
+return true;
+}
+}
+return false;
+}
+
 function handle_msg($m){
 global $TXT,$BTN;
 $from=$m['from']??[];
@@ -170,12 +213,18 @@ return;
 api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['invalid_link'],'parse_mode'=>'HTML']);
 return;
 }
-if($ctype==='private'&&$txt){
-$ux=load_uctx($uid);
-if($ux){
-$gid=$ux['chat_id'];
-$st=load_state($gid);
-if(!$st){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['plan_not_found'],'parse_mode'=>'HTML']);return;}
+    if($ctype==='private'&&admin_is_user($uid)&&$txt!==''){
+        if(admin_on_private_text($uid,$txt))return;
+    }
+    if($ctype==='private'&&$txt!==''){
+        if(user_bridge_forward($uid,$txt))return;
+    }
+    if($ctype==='private'&&$txt){
+        $ux=load_uctx($uid);
+        if($ux){
+            $gid=$ux['chat_id'];
+            $st=load_state($gid);
+            if(!$st){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['plan_not_found'],'parse_mode'=>'HTML']);return;}
 if(($ux['role']??'')==='buyer'){
 if(!preg_match('/^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/',$txt)){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['send_valid_email_buyer'],'parse_mode'=>'HTML']);return;}
 $st['buyer_email']=$txt;
@@ -261,22 +310,6 @@ $adm_text=$TXT['admin_info_title']."\n".$TXT['admin_info_seller'].$seller_tag."\
 }
 return;
 }
-}
-}
-}
-if($ctype==='private'&&admin_is_user($uid)&&$txt!==''){
-if(admin_on_private_text($uid,$txt))return;
-}
-if($ctype==='private'&&$txt!==''){
-$files=list_plan_files();
-foreach($files as $f){
-$a=@json_decode(@file_get_contents($f),true);
-if(!is_array($a))continue;
-$br=$a['bridge']??null;
-if(is_array($br)&&($br['on']??false)){
-$admin_id=(int)($br['admin']??0);
-if($uid===($a['buyer_id']??-1)&&$admin_id>0){api('sendMessage',['chat_id'=>$admin_id,'text'=>$TXT['reply_from_buyer_prefix'].$txt,'parse_mode'=>'HTML']);return;}
-if($uid===($a['seller_id']??-1)&&$admin_id>0){api('sendMessage',['chat_id'=>$admin_id,'text'=>$TXT['reply_from_seller_prefix'].$txt,'parse_mode'=>'HTML']);return;}
 }
 }
 }
