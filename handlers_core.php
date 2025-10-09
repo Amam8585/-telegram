@@ -46,6 +46,10 @@ $chat=$m['chat']??[];
 $cid=$chat['id']??0;
 $ctype=$chat['type']??'';
 $txt=trim($m['text']??'');
+if(in_array($ctype,['group','supergroup'])&&isset($m['new_chat_members'])&&is_array($m['new_chat_members'])){autoplan_on_join($cid,$chat,$m['new_chat_members']);}
+if($ctype==='private'&&function_exists('channel_enforce_join')){
+if(!channel_enforce_join($uid,$cid))return;
+}
 $cmd='';
 if($txt&&$txt[0]=='/'){if(preg_match('/^\/([A-Za-z_]+)(?:@[\w_]+)?/u',$txt,$mm)){$cmd=strtolower($mm[1]);}}
 if(in_array($ctype,['group','supergroup'])&&isset($m['new_chat_members'])&&is_array($m['new_chat_members'])){autoplan_on_join($cid,$chat,$m['new_chat_members']);}
@@ -268,13 +272,13 @@ $chat=$msg['chat']??[];
 $cid=$chat['id']??0;
 $mid=$msg['message_id']??0;
 $data=$cb['data']??'';
+if(($chat['type']??'')==='private'){
 if(function_exists('channel_handle_callback')&&channel_handle_callback($cb))return;
-$ctype=$chat['type']??'';
-if(function_exists('channel_enforce_join')&&$cid){
-$ctx=['chat_type'=>$ctype,'message_id'=>$mid,'kind'=>'callback','reply_to'=>$mid];
-if(!channel_enforce_join($uid,$cid,$ctx)){
+if(function_exists('channel_enforce_join')){
+if(!channel_enforce_join($uid,$cid)){
 if($qid!==''){api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>defined('CHANNEL_FORCE_JOIN_ALERT_TEXT')?CHANNEL_FORCE_JOIN_ALERT_TEXT:'برای استفاده از ربات ابتدا عضو کانال شوید','show_alert'=>true]);}
 return;
+}
 }
 }
 if(!$cid){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
