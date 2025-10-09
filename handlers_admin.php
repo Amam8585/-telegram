@@ -19,41 +19,11 @@ function admin_panel_render($flags=null){
     $text .= $auto_label . ($auto_disabled ? $status_disabled : $status_enabled) . "\n";
     $text .= $card_label . ($card_disabled ? $status_disabled : $status_enabled);
 
-    $clean_label = function ($raw) {
-        $text = html_entity_decode(strip_tags((string)$raw), ENT_QUOTES, 'UTF-8');
-        return trim(preg_replace('/\s+/u', ' ', $text));
-    };
-    $make_btn = function ($name, $is_disabled) use ($TXT, $clean_label) {
-        $enable_key = 'ap_toggle_' . $name . '_enable';
-        $disable_key = 'ap_toggle_' . $name . '_disable';
-        $defaults = [
-            'bot' => [
-                true => '✅ | روشن کردن ربات',
-                false => '❌ | خاموش کردن ربات',
-            ],
-            'auto' => [
-                true => '✅ | روشن کردن خودکار',
-                false => '❌ | خاموش کردن خودکار',
-            ],
-            'card' => [
-                true => '✅ | روشن کردن کارت به کارت',
-                false => '❌ | خاموش کردن کارت به کارت',
-            ],
-        ];
-        if ($is_disabled) {
-            if (isset($TXT[$enable_key])) {
-                return $clean_label($TXT[$enable_key]);
-            }
-            return $defaults[$name][true];
-        }
-        if (isset($TXT[$disable_key])) {
-            return $clean_label($TXT[$disable_key]);
-        }
-        return $defaults[$name][false];
-    };
-    $btn_bot = $make_btn('bot', $bot_disabled);
-    $btn_auto = $make_btn('auto', $auto_disabled);
-    $btn_card = $make_btn('card', $card_disabled);
+    $suffix_enabled = trim(strip_tags($TXT['ap_toggle_suffix_enabled'] ?? ' ✅'));
+    $suffix_disabled = trim(strip_tags($TXT['ap_toggle_suffix_disabled'] ?? ' ❌'));
+    $btn_bot = trim(strip_tags($TXT['ap_toggle_bot'] ?? 'روشن/خاموش ربات')) . ($bot_disabled ? $suffix_disabled : $suffix_enabled);
+    $btn_auto = trim(strip_tags($TXT['ap_toggle_auto'] ?? 'روشن/خاموش خودکار')) . ($auto_disabled ? $suffix_disabled : $suffix_enabled);
+    $btn_card = trim(strip_tags($TXT['ap_toggle_card'] ?? 'روشن/خاموش کارت به کارت')) . ($card_disabled ? $suffix_disabled : $suffix_enabled);
     $btn_close = trim(strip_tags($TXT['ap_close'] ?? 'بستن پنل'));
 
     $kb = [
@@ -99,20 +69,15 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             ];
             $key = $map[$data];
             $res = admin_flags_toggle($key);
-            $flags = $res['flags'];
-            $now_disabled = (bool)($res['disabled'] ?? false);
-            [$text, $kb] = admin_panel_render($flags);
-            api('editMessageText', ['chat_id' => $cid, 'message_id' => $mid, 'text' => $text, 'parse_mode' => 'HTML']);
-            api('editMessageReplyMarkup', ['chat_id' => $cid, 'message_id' => $mid, 'reply_markup' => json_encode($kb, JSON_UNESCAPED_UNICODE)]);
-            $answer_params = ['callback_query_id' => $qid];
-            $state_key = $now_disabled ? 'disabled' : 'enabled';
-            $state_txt_key = 'ap_toggle_' . $key . '_' . $state_key;
-            if (!empty($TXT[$state_txt_key])) {
-                $answer_params['text'] = strip_tags($TXT[$state_txt_key]);
-            } elseif (!empty($TXT['ap_saved'])) {
-                $answer_params['text'] = strip_tags($TXT['ap_saved']);
+            if ($data === 'ap_toggle_auto' || $data === 'ap_toggle_card') {
+                $flags = $res['flags'];
+                [$text, $kb] = admin_panel_render($flags);
+                api('editMessageText', ['chat_id' => $cid, 'message_id' => $mid, 'text' => $text, 'parse_mode' => 'HTML']);
+                api('editMessageReplyMarkup', ['chat_id' => $cid, 'message_id' => $mid, 'reply_markup' => json_encode($kb, JSON_UNESCAPED_UNICODE)]);
+                api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_saved']]);
+                return true;
             }
-            api('answerCallbackQuery', $answer_params);
+            api('answerCallbackQuery', ['callback_query_id' => $qid]);
             return true;
         }
     }
