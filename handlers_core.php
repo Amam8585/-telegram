@@ -170,12 +170,15 @@ return;
 api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['invalid_link'],'parse_mode'=>'HTML']);
 return;
 }
-if($ctype==='private'&&$txt){
-$ux=load_uctx($uid);
-if($ux){
-$gid=$ux['chat_id'];
-$st=load_state($gid);
-if(!$st){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['plan_not_found'],'parse_mode'=>'HTML']);return;}
+    if($ctype==='private'&&admin_is_user($uid)&&$txt!==''){
+        if(admin_on_private_text($uid,$txt))return;
+    }
+    if($ctype==='private'&&$txt){
+        $ux=load_uctx($uid);
+        if($ux){
+            $gid=$ux['chat_id'];
+            $st=load_state($gid);
+            if(!$st){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['plan_not_found'],'parse_mode'=>'HTML']);return;}
 if(($ux['role']??'')==='buyer'){
 if(!preg_match('/^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/',$txt)){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['send_valid_email_buyer'],'parse_mode'=>'HTML']);return;}
 $st['buyer_email']=$txt;
@@ -263,9 +266,6 @@ return;
 }
 }
 }
-}
-if($ctype==='private'&&admin_is_user($uid)&&$txt!==''){
-if(admin_on_private_text($uid,$txt))return;
 }
 if($ctype==='private'&&$txt!==''){
 $files=list_plan_files();
