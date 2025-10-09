@@ -107,9 +107,24 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                 api('answerCallbackQuery', ['callback_query_id' => $qid]);
                 return true;
             }
+            $bridge = $gs['bridge'] ?? [];
+            if (is_array($bridge) && ($bridge['on'] ?? false)) {
+                $current_admin = (int)($bridge['admin'] ?? 0);
+                if ($current_admin !== 0 && $current_admin !== $uid) {
+                    api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['bridge_busy']]);
+                    return true;
+                }
+                if (($bridge['side'] ?? '') === 'buyer') {
+                    api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['bridge_already']]);
+                    return true;
+                }
+            }
             $gs['bridge'] = ['on' => true, 'admin' => $uid, 'gid' => $gid, 'side' => 'buyer'];
             save_state($gid, $gs);
             api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['bridge_started_buyer'] . "\n" . $TXT['bridge_note_done'], 'parse_mode' => 'HTML']);
+            if (($gs['buyer_id'] ?? 0) > 0) {
+                api('sendMessage', ['chat_id' => (int)$gs['buyer_id'], 'text' => $TXT['bridge_notify_buyer'], 'parse_mode' => 'HTML']);
+            }
             api('answerCallbackQuery', ['callback_query_id' => $qid]);
             return true;
         }
@@ -120,9 +135,24 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                 api('answerCallbackQuery', ['callback_query_id' => $qid]);
                 return true;
             }
+            $bridge = $gs['bridge'] ?? [];
+            if (is_array($bridge) && ($bridge['on'] ?? false)) {
+                $current_admin = (int)($bridge['admin'] ?? 0);
+                if ($current_admin !== 0 && $current_admin !== $uid) {
+                    api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['bridge_busy']]);
+                    return true;
+                }
+                if (($bridge['side'] ?? '') === 'seller') {
+                    api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['bridge_already']]);
+                    return true;
+                }
+            }
             $gs['bridge'] = ['on' => true, 'admin' => $uid, 'gid' => $gid, 'side' => 'seller'];
             save_state($gid, $gs);
             api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['bridge_started_seller'] . "\n" . $TXT['bridge_note_done'], 'parse_mode' => 'HTML']);
+            if (($gs['seller_id'] ?? 0) > 0) {
+                api('sendMessage', ['chat_id' => (int)$gs['seller_id'], 'text' => $TXT['bridge_notify_seller'], 'parse_mode' => 'HTML']);
+            }
             api('answerCallbackQuery', ['callback_query_id' => $qid]);
             return true;
         }
@@ -137,6 +167,7 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                 $sel = (int)$gs['seller_id'];
                 $gs['seller_email'] = null;
                 $gs['seller_pass'] = null;
+                $gs['await_code'] = false;
                 save_state($gid, $gs);
                 save_uctx($sel, ['chat_id' => $gid, 'role' => 'seller', 'need' => 'email']);
                 api('sendMessage', ['chat_id' => $sel, 'text' => $TXT['seller_reask'], 'parse_mode' => 'HTML']);
@@ -153,7 +184,7 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             $gs = load_state($gid);
             if ($gs && ($gs['seller_id'] ?? 0) > 0) {
                 api('sendMessage', ['chat_id' => $gs['seller_id'], 'text' => $TXT['ask_seller_code'], 'parse_mode' => 'HTML']);
-                $gs['await_code'] = true;
+                $gs['await_code'] = ['admin' => $uid, 'ts' => time()];
                 save_state($gid, $gs);
             }
             api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['code_requested']]);
@@ -200,18 +231,21 @@ function admin_on_private_text($uid, $txt)
         }
         $br = $a['bridge'] ?? null;
         if (is_array($br) && ($br['on'] ?? false) && ($br['admin'] ?? 0) == $uid) {
-            if (mb_strtolower($txt, 'UTF-8') === 'done') {
-                $a['bridge']['on'] = false;
-                save_state((int)$a['bridge']['gid'], $a);
-                api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['bridge_finished'], 'parse_mode' => 'HTML']);
-                return true;
-            }
-            $to = 0;
             $side = $br['side'] ?? '';
+            $to = 0;
             if ($side === 'buyer') {
                 $to = (int)($a['buyer_id'] ?? 0);
             } elseif ($side === 'seller') {
                 $to = (int)($a['seller_id'] ?? 0);
+            }
+            if (mb_strtolower($txt, 'UTF-8') === 'done') {
+                $a['bridge']['on'] = false;
+                save_state((int)$a['bridge']['gid'], $a);
+                if ($to > 0) {
+                    api('sendMessage', ['chat_id' => $to, 'text' => $TXT['bridge_finished_user'], 'parse_mode' => 'HTML']);
+                }
+                api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['bridge_finished'], 'parse_mode' => 'HTML']);
+                return true;
             }
             if ($to > 0) {
                 api('sendMessage', ['chat_id' => $to, 'text' => $TXT['msg_from_admin_prefix'] . $txt, 'parse_mode' => 'HTML']);
