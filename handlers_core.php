@@ -206,7 +206,23 @@ if(isset($st['group_username'])&&$st['group_username']!==''){$glink='https://t.m
     $seller_link_label=$seller_username!==''?'@'.$seller_username:$view_profile;
     $seller_tag=$user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$st['seller_id'],'{label}'=>$seller_link_label]):$seller_link_label;
 $adm_text=$TXT['admin_info_title']."\n".$TXT['admin_info_seller'].$seller_tag."\n".$TXT['admin_info_email']."\n".htmlspecialchars($st['seller_email'])."\n".$TXT['admin_info_pass']."\n".htmlspecialchars($st['seller_pass']);
-$kb_rows=[[['text'=>$BTN['admin_msg_seller'],'callback_data'=>'msg_seller:'.$gid]],[['text'=>$BTN['admin_msg_buyer'],'callback_data'=>'msg_buyer:'.$gid]],[['text'=>$BTN['seller_wrong'],'callback_data'=>'seller_bad:'.$gid]],[$glink!==''?['text'=>$BTN['admin_group'],'url'=>$glink]:['text'=>$BTN['admin_group'],'callback_data'=>'no_group:'.$gid]]];
+    $kb_rows=[
+        [
+            ['text'=>$BTN['admin_request_code'],'callback_data'=>'req_code:'.$gid]
+        ],
+        [
+            ['text'=>$BTN['admin_msg_seller'],'callback_data'=>'msg_seller:'.$gid],
+            ['text'=>$BTN['admin_msg_buyer'],'callback_data'=>'msg_buyer:'.$gid]
+        ],
+        [
+            ['text'=>$BTN['seller_wrong'],'callback_data'=>'seller_bad:'.$gid]
+        ],
+        [
+            $glink!==''
+                ? ['text'=>$BTN['admin_group'],'url'=>$glink]
+                : ['text'=>$BTN['admin_group'],'callback_data'=>'no_group:'.$gid]
+        ]
+    ];
     $kb=['inline_keyboard'=>$kb_rows];
     if(!admin_broadcast('sendMessage',['text'=>$adm_text,'parse_mode'=>'HTML','disable_web_page_preview'=>true,'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)])){
         api('sendMessage',['chat_id'=>$uid,'text'=>$adm_text,'parse_mode'=>'HTML','disable_web_page_preview'=>true,'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)]);
