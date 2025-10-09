@@ -48,14 +48,12 @@ $ctype=$chat['type']??'';
 $txt=trim($m['text']??'');
 if(in_array($ctype,['group','supergroup'])&&isset($m['new_chat_members'])&&is_array($m['new_chat_members'])){autoplan_on_join($cid,$chat,$m['new_chat_members']);}
 if($ctype==='private'&&function_exists('channel_enforce_join')){
-if(!channel_enforce_join($uid,$cid))return;
+$ctx=['chat_type'=>'private','message_id'=>$m['message_id']??0,'force_on_error'=>true];
+if(!channel_enforce_join($uid,$cid,$ctx))return;
 }
 $cmd='';
 if($txt&&$txt[0]=='/'){if(preg_match('/^\/([A-Za-z_]+)(?:@[\w_]+)?/u',$txt,$mm)){$cmd=strtolower($mm[1]);}}
 if(in_array($ctype,['group','supergroup'])&&isset($m['new_chat_members'])&&is_array($m['new_chat_members'])){autoplan_on_join($cid,$chat,$m['new_chat_members']);}
-if($ctype==='private'&&function_exists('channel_enforce_join')){
-if(!channel_enforce_join($uid,$cid,['chat_type'=>'private','message_id'=>$m['message_id']??0]))return;
-}
 if(in_array($ctype,['group','supergroup'])&&$cmd!==''&&function_exists('channel_enforce_join')){
 $ctx=['chat_type'=>$ctype,'message_id'=>$m['message_id']??0,'command'=>$cmd,'reply_to'=>$m['message_id']??0];
 if(!channel_enforce_join($uid,$cid,$ctx))return;
@@ -275,7 +273,8 @@ $data=$cb['data']??'';
 if(($chat['type']??'')==='private'){
 if(function_exists('channel_handle_callback')&&channel_handle_callback($cb))return;
 if(function_exists('channel_enforce_join')){
-if(!channel_enforce_join($uid,$cid)){
+$ctx=['chat_type'=>'private','message_id'=>$mid,'force_on_error'=>true];
+if(!channel_enforce_join($uid,$cid,$ctx)){
 if($qid!==''){api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>defined('CHANNEL_FORCE_JOIN_ALERT_TEXT')?CHANNEL_FORCE_JOIN_ALERT_TEXT:'برای استفاده از ربات ابتدا عضو کانال شوید','show_alert'=>true]);}
 return;
 }
