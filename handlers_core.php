@@ -234,47 +234,9 @@ $glink=ensure_admin_group_link($gid,$st);
     $missing_html=$TXT['admin_info_missing_value']??'<b>نامشخص</b>';
     $missing_plain=trim(strip_tags($missing_html));
     $seller_username=$st['seller_username']??'';
-    $buyer_username=$st['buyer_username']??'';
-    $seller_id=(int)($st['seller_id']??0);
-    $buyer_id=(int)($st['buyer_id']??0);
-    $build_tag=function($id,$username,$label_key)use($TXT,$user_link_tpl,$view_profile,$missing_html,$missing_plain){
-        $id=(int)$id;
-        $username=trim((string)$username);
-        $base_label=$username!==''?'@'.$username:'';
-        if($base_label===''){
-            $base_label=$view_profile!==''?$view_profile:'';
-        }
-        if($base_label===''){
-            $base_label=$TXT[$label_key]??'';
-        }
-        if($base_label===''){
-            $base_label=$TXT['user_generic_label']??'';
-        }
-        if($base_label===''){
-            $base_label=$missing_plain;
-        }
-        if($id>0&&$user_link_tpl!==''){
-            return strtr($user_link_tpl,['{user_id}'=>$id,'{label}'=>$base_label]);
-        }
-        if($base_label===$missing_plain){
-            return $missing_html;
-        }
-        return htmlspecialchars($base_label,ENT_QUOTES,'UTF-8');
-    };
-    $seller_tag=$build_tag($seller_id,$seller_username,'seller_label');
-    $buyer_tag=$build_tag($buyer_id,$buyer_username,'buyer_label');
-    $seller_email=trim((string)($st['seller_email']??''));
-    $seller_pass=trim((string)($st['seller_pass']??''));
-    $buyer_email=trim((string)($st['buyer_email']??''));
-    $seller_email_text=$seller_email!==''?htmlspecialchars($seller_email,ENT_QUOTES,'UTF-8'):htmlspecialchars($missing_plain,ENT_QUOTES,'UTF-8');
-    $seller_pass_text=$seller_pass!==''?htmlspecialchars($seller_pass,ENT_QUOTES,'UTF-8'):htmlspecialchars($missing_plain,ENT_QUOTES,'UTF-8');
-    $buyer_email_text=$buyer_email!==''?htmlspecialchars($buyer_email,ENT_QUOTES,'UTF-8'):htmlspecialchars($missing_plain,ENT_QUOTES,'UTF-8');
-    $adm_text=$TXT['admin_info_title']
-        ."\n".$TXT['admin_info_seller'].$seller_tag
-        ."\n".$TXT['admin_info_email']."\n".$seller_email_text
-        ."\n".$TXT['admin_info_pass']."\n".$seller_pass_text
-        ."\n".$TXT['admin_info_buyer'].$buyer_tag
-        ."\n".$TXT['admin_info_buyer_email']."\n".$buyer_email_text;
+    $seller_link_label=$seller_username!==''?'@'.$seller_username:$view_profile;
+    $seller_tag=$user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$st['seller_id'],'{label}'=>$seller_link_label]):$seller_link_label;
+$adm_text=$TXT['admin_info_title']."\n".$TXT['admin_info_seller'].$seller_tag."\n".$TXT['admin_info_email']."\n".htmlspecialchars($st['seller_email'])."\n".$TXT['admin_info_pass']."\n".htmlspecialchars($st['seller_pass']);
     $kb_rows=[
         [
             ['text'=>$BTN['admin_request_code'],'callback_data'=>'req_code:'.$gid]

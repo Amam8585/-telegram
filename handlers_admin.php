@@ -123,7 +123,7 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                     return true;
                 }
             }
-            $gs['bridge'] = ['on' => true, 'admin' => $uid, 'gid' => (string)$gid, 'side' => 'buyer'];
+            $gs['bridge'] = ['on' => true, 'admin' => $uid, 'gid' => $gid, 'side' => 'buyer'];
             save_state($gid, $gs);
             api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['bridge_started_buyer'] . "\n" . $TXT['bridge_note_done'], 'parse_mode' => 'HTML']);
             if (($gs['buyer_id'] ?? 0) > 0) {
@@ -155,7 +155,7 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                     return true;
                 }
             }
-            $gs['bridge'] = ['on' => true, 'admin' => $uid, 'gid' => (string)$gid, 'side' => 'seller'];
+            $gs['bridge'] = ['on' => true, 'admin' => $uid, 'gid' => $gid, 'side' => 'seller'];
             save_state($gid, $gs);
             api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['bridge_started_seller'] . "\n" . $TXT['bridge_note_done'], 'parse_mode' => 'HTML']);
             if (($gs['seller_id'] ?? 0) > 0) {
@@ -252,10 +252,7 @@ function admin_on_private_text($uid, $txt)
             }
             if (mb_strtolower($txt, 'UTF-8') === 'done') {
                 $a['bridge']['on'] = false;
-                $bridge_gid = (string)($a['bridge']['gid'] ?? '');
-                if ($bridge_gid !== '') {
-                    save_state($bridge_gid, $a);
-                }
+                save_state((int)$a['bridge']['gid'], $a);
                 if ($to > 0) {
                     api('sendMessage', ['chat_id' => $to, 'text' => $TXT['bridge_finished_user'], 'parse_mode' => 'HTML']);
                 }
