@@ -69,15 +69,29 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             ];
             $key = $map[$data];
             $res = admin_flags_toggle($key);
-            if ($data === 'ap_toggle_auto' || $data === 'ap_toggle_card') {
-                $flags = $res['flags'];
-                [$text, $kb] = admin_panel_render($flags);
-                api('editMessageText', ['chat_id' => $cid, 'message_id' => $mid, 'text' => $text, 'parse_mode' => 'HTML']);
-                api('editMessageReplyMarkup', ['chat_id' => $cid, 'message_id' => $mid, 'reply_markup' => json_encode($kb, JSON_UNESCAPED_UNICODE)]);
-                api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_saved']]);
-                return true;
-            }
-            api('answerCallbackQuery', ['callback_query_id' => $qid]);
+            $flags = $res['flags'];
+            [$text, $kb] = admin_panel_render($flags);
+            api('editMessageText', ['chat_id' => $cid, 'message_id' => $mid, 'text' => $text, 'parse_mode' => 'HTML']);
+            api('editMessageReplyMarkup', ['chat_id' => $cid, 'message_id' => $mid, 'reply_markup' => json_encode($kb, JSON_UNESCAPED_UNICODE)]);
+
+            $disabled = (bool)($res['disabled'] ?? false);
+            $messages = [
+                'bot' => [
+                    'enabled' => $TXT['ap_toggle_bot_enabled'] ?? ($TXT['ap_saved'] ?? ''),
+                    'disabled' => $TXT['ap_toggle_bot_disabled'] ?? ($TXT['ap_saved'] ?? ''),
+                ],
+                'auto' => [
+                    'enabled' => $TXT['ap_toggle_auto_enabled'] ?? ($TXT['ap_saved'] ?? ''),
+                    'disabled' => $TXT['ap_toggle_auto_disabled'] ?? ($TXT['ap_saved'] ?? ''),
+                ],
+                'card' => [
+                    'enabled' => $TXT['ap_toggle_card_enabled'] ?? ($TXT['ap_saved'] ?? ''),
+                    'disabled' => $TXT['ap_toggle_card_disabled'] ?? ($TXT['ap_saved'] ?? ''),
+                ],
+            ];
+            $status_key = $disabled ? 'disabled' : 'enabled';
+            $cb_text = $messages[$key][$status_key] ?? ($TXT['ap_saved'] ?? '');
+            api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $cb_text]);
             return true;
         }
     }
