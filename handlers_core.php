@@ -60,25 +60,16 @@ $trim=trim($txt);
 if($trim===''){return false;}
 $lower=mb_strtolower($trim,'UTF-8');
 $files=list_plan_files();
-    foreach($files as $f){
-    $a=@json_decode(@file_get_contents($f),true);
-    if(!is_array($a))continue;
-    $br=$a['bridge']??null;
-    if(!is_array($br)||!($br['on']??false))continue;
-    $admin_id=(int)($br['admin']??0);
-    if($admin_id<=0)continue;
-    $side=$br['side']??'';
-    $gid=(int)($br['gid']??0);
-    $link_used=is_array($a['link_tokens_used']??null)?$a['link_tokens_used']:['buyer'=>null,'seller'=>null];
-    $buyer_ids=array_filter([
-        isset($a['buyer_id'])?(string)$a['buyer_id']:null,
-        isset($link_used['buyer'])?(string)$link_used['buyer']:null,
-    ],function($v){return $v!==null&&$v!=='';});
-    $seller_ids=array_filter([
-        isset($a['seller_id'])?(string)$a['seller_id']:null,
-        isset($link_used['seller'])?(string)$link_used['seller']:null,
-    ],function($v){return $v!==null&&$v!=='';});
-    if($side==='buyer'&&in_array((string)$uid,$buyer_ids,true)){
+foreach($files as $f){
+$a=@json_decode(@file_get_contents($f),true);
+if(!is_array($a))continue;
+$br=$a['bridge']??null;
+if(!is_array($br)||!($br['on']??false))continue;
+$admin_id=(int)($br['admin']??0);
+if($admin_id<=0)continue;
+$side=$br['side']??'';
+$gid=(int)($br['gid']??0);
+    if($side==='buyer'&&(string)$uid===(string)($a['buyer_id']??'')){
 if($lower==='done'){
 $a['bridge']['on']=false;
 save_state($gid,$a);
@@ -90,7 +81,7 @@ api('sendMessage',['chat_id'=>$admin_id,'text'=>$TXT['reply_from_buyer_prefix'].
 api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['bridge_forwarded'],'parse_mode'=>'HTML']);
 return true;
 }
-    if($side==='seller'&&in_array((string)$uid,$seller_ids,true)){
+    if($side==='seller'&&(string)$uid===(string)($a['seller_id']??'')){
 if($lower==='done'){
 $a['bridge']['on']=false;
 save_state($gid,$a);
@@ -225,9 +216,6 @@ return;
     if($ctype==='private'&&admin_is_user($uid)&&$txt!==''){
         if(admin_on_private_text($uid,$txt))return;
     }
-    if($ctype==='private'&&$txt!==''){
-        if(user_bridge_forward($uid,$txt))return;
-    }
     if($ctype==='private'&&$txt){
         $ux=load_uctx($uid);
         if($ux){
@@ -319,6 +307,19 @@ $adm_text=$TXT['admin_info_title']."\n".$TXT['admin_info_seller'].$seller_tag."\
 }
 return;
 }
+}
+}
+}
+if($ctype==='private'&&$txt!==''){
+$files=list_plan_files();
+foreach($files as $f){
+$a=@json_decode(@file_get_contents($f),true);
+if(!is_array($a))continue;
+$br=$a['bridge']??null;
+if(is_array($br)&&($br['on']??false)){
+$admin_id=(int)($br['admin']??0);
+if($uid===($a['buyer_id']??-1)&&$admin_id>0){api('sendMessage',['chat_id'=>$admin_id,'text'=>$TXT['reply_from_buyer_prefix'].$txt,'parse_mode'=>'HTML']);return;}
+if($uid===($a['seller_id']??-1)&&$admin_id>0){api('sendMessage',['chat_id'=>$admin_id,'text'=>$TXT['reply_from_seller_prefix'].$txt,'parse_mode'=>'HTML']);return;}
 }
 }
 }
