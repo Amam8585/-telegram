@@ -134,7 +134,7 @@ function channel_is_user_member($user_id)
 }
 
 /**
- * Enforce channel membership for private chats.
+ * Enforce channel membership where required (currently private chats only).
  *
  * @param int|string $user_id
  * @param int|string $chat_id
@@ -143,6 +143,10 @@ function channel_is_user_member($user_id)
 function channel_enforce_join($user_id, $chat_id, array $context = [])
 {
     if (!$user_id || !$chat_id) {
+        return true;
+    }
+    $chat_type = $context['chat_type'] ?? '';
+    if ($chat_type !== '' && $chat_type !== 'private') {
         return true;
     }
     if (function_exists('admin_is_user') && admin_is_user($user_id)) {
