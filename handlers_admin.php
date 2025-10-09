@@ -4,36 +4,19 @@ function admin_panel_render($flags=null){
     if ($flags === null) {
         $flags = admin_flags_all();
     }
-    $bot_disabled = (bool)($flags['bot'] ?? false);
     $auto_disabled = (bool)($flags['auto'] ?? false);
     $card_disabled = (bool)($flags['card'] ?? false);
 
-    $status_enabled = $TXT['ap_status_enabled'] ?? '';
-    $status_disabled = $TXT['ap_status_disabled'] ?? '';
-    $bot_label = $TXT['ap_bot_status_label'] ?? '';
-    $auto_label = $TXT['ap_auto_status_label'] ?? '';
-    $card_label = $TXT['ap_card_status_label'] ?? '';
-    $suffix_enabled = $TXT['ap_toggle_suffix_enabled'] ?? '';
-    $suffix_disabled = $TXT['ap_toggle_suffix_disabled'] ?? '';
-
     $text = $TXT['admin_panel_title'] . "\n";
-    $text .= $bot_label . ($bot_disabled ? $status_disabled : $status_enabled) . "\n";
-    $text .= $auto_label . ($auto_disabled ? $status_disabled : $status_enabled) . "\n";
-    $text .= $card_label . ($card_disabled ? $status_disabled : $status_enabled);
+    $text .= '🤖 | <b>خودکار:</b> ' . ($auto_disabled ? '❌ <b>غیرفعال</b>' : '✅ <b>فعال</b>') . "\n";
+    $text .= '💳 | <b>کارت به کارت:</b> ' . ($card_disabled ? '❌ <b>غیرفعال</b>' : '✅ <b>فعال</b>');
 
-    $btn_bot_base = trim(strip_tags($TXT['ap_toggle_bot'] ?? ''));
-    $btn_auto_base = trim(strip_tags($TXT['ap_toggle_auto'] ?? ''));
-    $btn_card_base = trim(strip_tags($TXT['ap_toggle_card'] ?? ''));
-    $btn_bot = $btn_bot_base . ($bot_disabled ? $suffix_disabled : $suffix_enabled);
-    $btn_auto = $btn_auto_base . ($auto_disabled ? $suffix_disabled : $suffix_enabled);
-    $btn_card = $btn_card_base . ($card_disabled ? $suffix_disabled : $suffix_enabled);
-    $btn_close = trim(strip_tags($TXT['ap_close'] ?? ''));
+    $btn_auto = trim(strip_tags($TXT['ap_toggle_auto'] ?? 'روشن/خاموش خودکار')) . ($auto_disabled ? ' ❌' : ' ✅');
+    $btn_card = trim(strip_tags($TXT['ap_toggle_card'] ?? 'روشن/خاموش کارت به کارت')) . ($card_disabled ? ' ❌' : ' ✅');
+    $btn_close = trim(strip_tags($TXT['ap_close'] ?? 'بستن پنل'));
 
     $kb = [
         'inline_keyboard' => [
-            [
-                ['text' => $btn_bot, 'callback_data' => 'ap_toggle_bot'],
-            ],
             [
                 ['text' => $btn_auto, 'callback_data' => 'ap_toggle_auto'],
             ],
@@ -59,17 +42,8 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             return true;
         }
         if ($data === 'ap_close') {
-            api('editMessageText', [
-                'chat_id' => $cid,
-                'message_id' => $mid,
-                'text' => $TXT['ap_closed'],
-                'parse_mode' => 'HTML',
-            ]);
-            api('editMessageReplyMarkup', [
-                'chat_id' => $cid,
-                'message_id' => $mid,
-                'reply_markup' => json_encode(['inline_keyboard' => []], JSON_UNESCAPED_UNICODE),
-            ]);
+            api('editMessageText', ['chat_id' => $cid, 'message_id' => $mid, 'text' => $TXT['ap_closed'], 'parse_mode' => 'HTML']);
+            api('editMessageReplyMarkup', ['chat_id' => $cid, 'message_id' => $mid, 'reply_markup' => json_encode(['inline_keyboard' => []], JSON_UNESCAPED_UNICODE)]);
             api('answerCallbackQuery', ['callback_query_id' => $qid]);
             return true;
         }
@@ -80,6 +54,8 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                 'ap_toggle_card' => 'card',
             ];
             $key = $map[$data];
+        if ($data === 'ap_toggle_auto' || $data === 'ap_toggle_card') {
+            $key = $data === 'ap_toggle_auto' ? 'auto' : 'card';
             $res = admin_flags_toggle($key);
             $flags = $res['flags'];
             [$text, $kb] = admin_panel_render($flags);
