@@ -54,18 +54,18 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                 'ap_toggle_card' => 'card',
             ];
             $key = $map[$data];
-        if ($data === 'ap_toggle_auto' || $data === 'ap_toggle_card') {
-            $key = $data === 'ap_toggle_auto' ? 'auto' : 'card';
             $res = admin_flags_toggle($key);
-            $flags = $res['flags'];
-            [$text, $kb] = admin_panel_render($flags);
-            api('editMessageText', ['chat_id' => $cid, 'message_id' => $mid, 'text' => $text, 'parse_mode' => 'HTML']);
-            api('editMessageReplyMarkup', ['chat_id' => $cid, 'message_id' => $mid, 'reply_markup' => json_encode($kb, JSON_UNESCAPED_UNICODE)]);
-            api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_saved']]);
+            if ($data === 'ap_toggle_auto' || $data === 'ap_toggle_card') {
+                $flags = $res['flags'];
+                [$text, $kb] = admin_panel_render($flags);
+                api('editMessageText', ['chat_id' => $cid, 'message_id' => $mid, 'text' => $text, 'parse_mode' => 'HTML']);
+                api('editMessageReplyMarkup', ['chat_id' => $cid, 'message_id' => $mid, 'reply_markup' => json_encode($kb, JSON_UNESCAPED_UNICODE)]);
+                api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_saved']]);
+                return true;
+            }
+            api('answerCallbackQuery', ['callback_query_id' => $qid]);
             return true;
         }
-        api('answerCallbackQuery', ['callback_query_id' => $qid]);
-        return true;
     }
     if (strpos($data, 'msg_buyer:') === 0 || strpos($data, 'msg_seller:') === 0 || strpos($data, 'seller_bad:') === 0 || strpos($data, 'no_group:') === 0 || strpos($data, 'req_code:') === 0 || strpos($data, 'finish_change:') === 0) {
         if (!$is_admin) {
