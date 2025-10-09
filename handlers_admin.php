@@ -69,16 +69,15 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             ];
             $key = $map[$data];
             $res = admin_flags_toggle($key);
-            $flags = $res['flags'];
-            [$text, $kb] = admin_panel_render($flags);
-            api('editMessageText', ['chat_id' => $cid, 'message_id' => $mid, 'text' => $text, 'parse_mode' => 'HTML']);
-            api('editMessageReplyMarkup', ['chat_id' => $cid, 'message_id' => $mid, 'reply_markup' => json_encode($kb, JSON_UNESCAPED_UNICODE)]);
-            $saved_txt = $TXT['ap_saved'] ?? '';
-            $answer_params = ['callback_query_id' => $qid];
-            if ($saved_txt !== '') {
-                $answer_params['text'] = $saved_txt;
+            if ($data === 'ap_toggle_auto' || $data === 'ap_toggle_card') {
+                $flags = $res['flags'];
+                [$text, $kb] = admin_panel_render($flags);
+                api('editMessageText', ['chat_id' => $cid, 'message_id' => $mid, 'text' => $text, 'parse_mode' => 'HTML']);
+                api('editMessageReplyMarkup', ['chat_id' => $cid, 'message_id' => $mid, 'reply_markup' => json_encode($kb, JSON_UNESCAPED_UNICODE)]);
+                api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_saved']]);
+                return true;
             }
-            api('answerCallbackQuery', $answer_params);
+            api('answerCallbackQuery', ['callback_query_id' => $qid]);
             return true;
         }
     }
