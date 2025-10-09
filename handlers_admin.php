@@ -9,11 +9,11 @@ function admin_panel_render($flags=null){
     $card_disabled = (bool)($flags['card'] ?? false);
 
     $text = $TXT['admin_panel_title'] . "\n";
-    $status_enabled = $TXT['ap_status_enabled'] ?? '✅ <b>فعال</b>';
-    $status_disabled = $TXT['ap_status_disabled'] ?? '❌ <b>غیرفعال</b>';
-    $bot_label = $TXT['ap_bot_status_label'] ?? '🤖 | <b>ربات:</b> ';
-    $auto_label = $TXT['ap_auto_status_label'] ?? '🤖 | <b>خودکار:</b> ';
-    $card_label = $TXT['ap_card_status_label'] ?? '💳 | <b>کارت به کارت:</b> ';
+    $status_enabled = $TXT['ap_status_enabled'] ?? '✅  <b>فعال</b>';
+    $status_disabled = $TXT['ap_status_disabled'] ?? '❌  <b>غیرفعال</b>';
+    $bot_label = $TXT['ap_bot_status_label'] ?? '🤖 | <b>ربات :</b> ';
+    $auto_label = $TXT['ap_auto_status_label'] ?? '🤖 | <b>خودکار :</b> ';
+    $card_label = $TXT['ap_card_status_label'] ?? '💳 | <b>کارت به کارت :</b> ';
 
     $text .= $bot_label . ($bot_disabled ? $status_disabled : $status_enabled) . "\n";
     $text .= $auto_label . ($auto_disabled ? $status_disabled : $status_enabled) . "\n";
@@ -21,9 +21,9 @@ function admin_panel_render($flags=null){
 
     $suffix_enabled = trim(strip_tags($TXT['ap_toggle_suffix_enabled'] ?? ' ✅'));
     $suffix_disabled = trim(strip_tags($TXT['ap_toggle_suffix_disabled'] ?? ' ❌'));
-    $btn_bot = trim(strip_tags($TXT['ap_toggle_bot'] ?? 'روشن/خاموش ربات')) . ($bot_disabled ? $suffix_disabled : $suffix_enabled);
-    $btn_auto = trim(strip_tags($TXT['ap_toggle_auto'] ?? 'روشن/خاموش خودکار')) . ($auto_disabled ? $suffix_disabled : $suffix_enabled);
-    $btn_card = trim(strip_tags($TXT['ap_toggle_card'] ?? 'روشن/خاموش کارت به کارت')) . ($card_disabled ? $suffix_disabled : $suffix_enabled);
+    $btn_bot = trim(strip_tags($TXT['ap_toggle_bot'] ?? 'وضعیت ربات')) . ($bot_disabled ? $suffix_disabled : $suffix_enabled);
+    $btn_auto = trim(strip_tags($TXT['ap_toggle_auto'] ?? 'روش خودکار')) . ($auto_disabled ? $suffix_disabled : $suffix_enabled);
+    $btn_card = trim(strip_tags($TXT['ap_toggle_card'] ?? 'روش کارت به کارت')) . ($card_disabled ? $suffix_disabled : $suffix_enabled);
     $btn_close = trim(strip_tags($TXT['ap_close'] ?? 'بستن پنل'));
 
     $kb = [
