@@ -73,17 +73,31 @@ $TXT=[
 'edited_price_ack'=>'<b>ویرایش قیمت</b>',
 'admin_panel_title'=>'<b>پنل مدیریت</b>',
 'ap_toggle_bot'=>'<b>روشن/خاموش ربات</b>',
+'ap_toggle_bot_enable'=>'<b>✅ | روشن کردن ربات</b>',
+'ap_toggle_bot_disable'=>'<b>❌ | خاموش کردن ربات</b>',
 'ap_toggle_auto'=>'<b>روشن/خاموش خودکار</b>',
+'ap_toggle_auto_enable'=>'<b>✅ | روشن کردن خودکار</b>',
+'ap_toggle_auto_disable'=>'<b>❌ | خاموش کردن خودکار</b>',
 'ap_toggle_card'=>'<b>روشن/خاموش کارت به کارت</b>',
+'ap_toggle_card_enable'=>'<b>✅ | روشن کردن کارت به کارت</b>',
+'ap_toggle_card_disable'=>'<b>❌ | خاموش کردن کارت به کارت</b>',
 'ap_close'=>'<b>بستن پنل</b>',
 'ap_closed'=>'<b>پنل بسته شد</b>',
 'ap_saved'=>'<b>ثبت شد</b>',
+'ap_toggle_bot_enabled'=>'<b>ربات روشن شد</b>',
+'ap_toggle_bot_disabled'=>'<b>ربات خاموش شد</b>',
+'ap_toggle_auto_enabled'=>'<b>خودکار روشن شد</b>',
+'ap_toggle_auto_disabled'=>'<b>خودکار خاموش شد</b>',
+'ap_toggle_card_enabled'=>'<b>کارت به کارت روشن شد</b>',
+'ap_toggle_card_disabled'=>'<b>کارت به کارت خاموش شد</b>',
 'ap_status_enabled'=>'✅ <b>فعال</b>',
 'ap_status_disabled'=>'❌ <b>غیرفعال</b>',
-'ap_auto_status_label'=>'🤖 | <b>خودکار:</b> ',
+'ap_bot_status_label'=>'🤖 | <b>ربات:</b> ',
+'ap_auto_status_label'=>'⚙️ | <b>خودکار:</b> ',
 'ap_card_status_label'=>'💳 | <b>کارت به کارت:</b> ',
-'ap_toggle_suffix_enabled'=>' ✅',
-'ap_toggle_suffix_disabled'=>' ❌',
+'ap_toggle_suffix_enabled'=>' فعال ✅',
+'ap_toggle_suffix_disabled'=>' غیرفعال ❌',
+'bot_disabled_notice'=>'<b>ربات خاموش است</b>',
 'clean_limit'=>'⏳ ┇ <b>در هر ۳۰ دقیقه فقط ۲ بار می‌توانید /clean را اجرا کنید</b>',
 'clean_try_after'=>'🕐 | <b>بعداً تلاش کنید</b>',
 'lock_btn'=>'🔒 ┇ <b>این دکمه قفل است</b>',
