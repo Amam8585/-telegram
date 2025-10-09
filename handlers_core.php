@@ -9,6 +9,23 @@ if(preg_match('/[\x{0600}-\x{06FF}]/u',$p))return false;
 if(preg_match('/\s/',$p))return false;
 return (bool)preg_match('/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9!@#$%^&*()\-\_=+\[\]{};:,.?<>\/\\\\|~`]{4,64}$/',$p);
 }
+function ensure_admin_group_link($gid,&$st){
+    if(isset($st['group_username'])&&$st['group_username']!==''){
+        return 'https://t.me/'.$st['group_username'];
+    }
+    $cached=trim((string)($st['admin_group_link']??''));
+    if($cached!==''){
+        return $cached;
+    }
+    $res=api('exportChatInviteLink',['chat_id'=>$gid]);
+    if(isset($res['ok'])&&$res['ok']&&isset($res['result'])&&is_string($res['result'])&&$res['result']!==''){
+        $st['admin_group_link']=$res['result'];
+        save_state($gid,$st);
+        return $st['admin_group_link'];
+    }
+    return '';
+}
+
 function start_plan_now($cid,$chat,$uid_hint){
 global $TXT,$BTN;
 $st=load_state($cid);
@@ -167,22 +184,35 @@ api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['buyer_email_ok'],'parse_mode'=>
 return;
 }
 if(($ux['role']??'')==='seller'){
-    if(($st['await_code']??false)===true){
-    $group_label=$TXT['seller_code_group_label']??'Group:';
-    $code_tpl=$TXT['seller_code_template']??'';
-    $send=strtr($code_tpl,[
-    '{code}'=>htmlspecialchars($txt),
-    '{group_id}'=>$gid,
-    '{group_label}'=>$group_label,
-    ]);
-    if(!admin_broadcast('sendMessage',['text'=>$send,'parse_mode'=>'HTML'])){
-        api('sendMessage',['chat_id'=>$uid,'text'=>$send,'parse_mode'=>'HTML']);
+    $await_code=$st['await_code']??false;
+    if($await_code){
+        $code_admin_id=0;
+        if(is_array($await_code)){
+            $code_admin_id=(int)($await_code['admin']??0);
+        }
+        $group_label=$TXT['seller_code_group_label']??'Group:';
+        $code_tpl=$TXT['seller_code_template']??'';
+        $send=strtr($code_tpl,[
+            '{code}'=>htmlspecialchars($txt),
+            '{group_id}'=>$gid,
+            '{group_label}'=>$group_label,
+        ]);
+        $delivered=false;
+        if($code_admin_id>0){
+            $res=api('sendMessage',['chat_id'=>$code_admin_id,'text'=>$send,'parse_mode'=>'HTML']);
+            $delivered=(isset($res['ok'])&&$res['ok']);
+        }
+        if(!$delivered){
+            $delivered=admin_broadcast('sendMessage',['text'=>$send,'parse_mode'=>'HTML']);
+        }
+        if(!$delivered){
+            api('sendMessage',['chat_id'=>$uid,'text'=>$send,'parse_mode'=>'HTML']);
+        }
+        $st['await_code']=false;
+        save_state($gid,$st);
+        api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['code_sent_to_admin'],'parse_mode'=>'HTML']);
+        return;
     }
-$st['await_code']=false;
-save_state($gid,$st);
-api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['code_sent_to_admin'],'parse_mode'=>'HTML']);
-return;
-}
 if(($ux['need']??'email')==='email'){
 if(!preg_match('/^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/',$txt)){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['send_valid_email_seller'],'parse_mode'=>'HTML']);return;}
 $st['seller_email']=$txt;
@@ -198,8 +228,7 @@ api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['seller_info_ok'],'parse_mode'=>
 if(empty($st['notified_admin'])){
 $st['notified_admin']=true;
 save_state($gid,$st);
-$glink='';
-if(isset($st['group_username'])&&$st['group_username']!==''){$glink='https://t.me/'.$st['group_username'];}
+$glink=ensure_admin_group_link($gid,$st);
     $user_link_tpl=$TXT['user_link_template']??'';
     $view_profile=$TXT['admin_profile_view_label']??'';
     $seller_username=$st['seller_username']??'';
