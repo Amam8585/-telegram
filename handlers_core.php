@@ -54,6 +54,10 @@ if(!channel_enforce_join($uid,$cid,$ctx))return;
 $cmd='';
 if($txt&&$txt[0]=='/'){if(preg_match('/^\/([A-Za-z_]+)(?:@[\w_]+)?/u',$txt,$mm)){$cmd=strtolower($mm[1]);}}
 if(in_array($ctype,['group','supergroup'])&&isset($m['new_chat_members'])&&is_array($m['new_chat_members'])){autoplan_on_join($cid,$chat,$m['new_chat_members']);}
+if(in_array($ctype,['group','supergroup'])&&$cmd!==''&&function_exists('channel_enforce_join')){
+$ctx=['chat_type'=>$ctype,'message_id'=>$m['message_id']??0,'command'=>$cmd,'reply_to'=>$m['message_id']??0];
+if(!channel_enforce_join($uid,$cid,$ctx))return;
+}
 if(in_array($ctype,['group','supergroup'])&&$cmd==='plan'){
 $st=load_state($cid);
 if($st&&($st['phase']??'')!=='done'){api('sendMessage',['chat_id'=>$cid,'text'=>$TXT['plan_busy'],'parse_mode'=>'HTML']);return;}
