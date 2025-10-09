@@ -20,14 +20,30 @@ if (!defined('CHANNEL_FORCE_RECHECK_CALLBACK')) {
     define('CHANNEL_FORCE_RECHECK_CALLBACK', 'channel_recheck');
 }
 
-function channel_force_join_message_text()
+function channel_force_join_message_text(array $context = [])
 {
     global $TXT;
+
+    $message = null;
     if (isset($TXT['channel_force_join_message'])) {
-        return (string) $TXT['channel_force_join_message'];
+        $message = (string) $TXT['channel_force_join_message'];
     }
 
-    return "برای استفاده از ربات باید ابتدا در کانال زیر عضو شوید:\n\nکانال: https://t.me/Arian_storeGp";
+    if ($message === null || $message === '') {
+        $message = "برای استفاده از ربات باید ابتدا در کانال زیر عضو شوید:\n\nکانال: {channel_link}";
+    }
+
+    $link = CHANNEL_FORCE_CHAT_LINK;
+    $flags = ENT_QUOTES;
+    if (defined('ENT_SUBSTITUTE')) {
+        $flags |= ENT_SUBSTITUTE;
+    }
+    $replacements = [
+        '{channel_link}' => htmlspecialchars($link, $flags, 'UTF-8'),
+        '{join_button}' => channel_force_join_button_text(),
+    ];
+
+    return strtr($message, $replacements);
 }
 
 function channel_force_join_button_text()
@@ -118,22 +134,27 @@ function channel_is_user_member($user_id)
 }
 
 /**
- * Enforce channel membership for private chats.
+ * Enforce channel membership where required (currently private chats only).
  *
  * @param int|string $user_id
  * @param int|string $chat_id
  * @return bool True if the user can continue, false if blocked.
  */
-function channel_enforce_join($user_id, $chat_id)
+function channel_enforce_join($user_id, $chat_id, array $context = [])
 {
     if (!$user_id || !$chat_id) {
+        return true;
+    }
+    $chat_type = $context['chat_type'] ?? '';
+    if ($chat_type !== '' && $chat_type !== 'private') {
         return true;
     }
     if (function_exists('admin_is_user') && admin_is_user($user_id)) {
         return true;
     }
     $membership = channel_is_user_member($user_id);
-    if ($membership === null) {
+    $force_on_error = !empty($context['force_on_error']);
+    if ($membership === null && !$force_on_error) {
         return true;
     }
     if ($membership === true) {
@@ -158,13 +179,20 @@ function channel_enforce_join($user_id, $chat_id)
                 ],
             ],
         ];
-        api('sendMessage', [
+        $payload = [
             'chat_id' => $chat_id,
-            'text' => channel_force_join_message_text(),
+            'text' => channel_force_join_message_text($context),
             'parse_mode' => 'HTML',
             'reply_markup' => json_encode($keyboard, JSON_UNESCAPED_UNICODE),
             'disable_web_page_preview' => true,
-        ]);
+        ];
+        $chat_type = $context['chat_type'] ?? '';
+        $message_id = $context['message_id'] ?? 0;
+        if ($chat_type !== 'private' && $message_id) {
+            $payload['reply_to_message_id'] = $message_id;
+            $payload['allow_sending_without_reply'] = true;
+        }
+        api('sendMessage', $payload);
         $notified[$key] = true;
     }
     return false;
