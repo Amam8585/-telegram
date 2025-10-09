@@ -2,6 +2,7 @@
 require __DIR__.'/config.php';
 require __DIR__.'/txt.php';
 require __DIR__.'/helpers.php';
+require __DIR__.'/channel.php';
 require __DIR__.'/handlers_main.php';
 require __DIR__.'/handlers_admin.php';
 require __DIR__.'/handlers_core.php';
