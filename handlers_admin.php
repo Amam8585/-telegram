@@ -49,7 +49,7 @@ function admin_panel_render($flags=null){
 function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
 {
     global $TXT, $BTN;
-    $is_admin = (defined('ADMIN_ID') && ((string)$uid === (string)ADMIN_ID));
+    $is_admin = admin_is_user($uid);
     if (strpos($data, 'ap_') === 0) {
         if (!$is_admin) {
             api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['only_admin_btn']]);

@@ -1,6 +1,12 @@
 <?php
 define('BOT_TOKEN','7401933853:AAGIIDiDLN6Pl1M2VqRpqHRKRUstubQNWTU');
-define('ADMIN_ID','245136195');
+define('ADMIN_IDS',[
+    '245136195',
+    '123456789',
+    '987654321',
+    '112233445',
+]);
+define('ADMIN_ID',ADMIN_IDS[0]);
 define('ZP_MERCHANT_ID','6315601e-880b-4370-a022-f97da548bd87');
 define('BOT_USERNAME','Uwhehshshhbot');
 define('CARD_NUMBER','6219861860522605');

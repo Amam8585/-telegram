@@ -57,7 +57,7 @@ return;
 }
 if(in_array($ctype,['group','supergroup'])&&$cmd==='clean'){
 $lim_ok=true;
-$is_admin=(defined('ADMIN_ID')&&((string)$uid===(string)ADMIN_ID));
+$is_admin=admin_is_user($uid);
 if(!$is_admin){
 $lf=data_dir().'/limit.json';
 $all=@json_decode(@file_get_contents($lf),true);if(!is_array($all))$all=[];
@@ -77,12 +77,8 @@ if($ctype==='group'||$ctype==='supergroup'){
 $st=load_state($cid);
     if($st&&($st['phase']??'')==='await_receipt'&&((isset($m['photo'])&&is_array($m['photo']))||isset($m['document']))){
     $amt=(int)($st['total']??get_total($st));
-    $admin_tag_tpl=$TXT['admin_tag_with_link']??'';
-    $admin_tag_plain=$TXT['admin_tag_plain']??'';
-    if(defined('ADMIN_ID')&&$admin_tag_tpl!==''){$admin_tag=strtr($admin_tag_tpl,['{admin_id}'=>ADMIN_ID]);}
-    elseif($admin_tag_plain!==''){$admin_tag=$admin_tag_plain;}
-    else{$admin_tag='';}
-    $msg=$admin_tag.' '.$TXT['receipt_agreed_amount_prefix'].number_format($amt).$TXT['receipt_agreed_amount_suffix']."\n".$TXT['admin_wait_confirm_short'];
+    $admin_tag=admin_mentions_text($TXT);
+    $msg=($admin_tag!==''?$admin_tag.' ':'').$TXT['receipt_agreed_amount_prefix'].number_format($amt).$TXT['receipt_agreed_amount_suffix']."\n".$TXT['admin_wait_confirm_short'];
 $rid=bin2hex(random_bytes(3));
 $kb=['inline_keyboard'=>[[['text'=>$BTN['admin_approve'],'callback_data'=>'admin_ok:'.$rid]]]];
 $res=api('sendMessage',['chat_id'=>$cid,'text'=>$msg,'parse_mode'=>'HTML','reply_to_message_id'=>$m['message_id'],'allow_sending_without_reply'=>true,'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)]);
@@ -163,7 +159,6 @@ return;
 }
 if(($ux['role']??'')==='seller'){
     if(($st['await_code']??false)===true){
-    $admin_chat=(defined('ADMIN_ID')?ADMIN_ID:$uid);
     $group_label=$TXT['seller_code_group_label']??'Group:';
     $code_tpl=$TXT['seller_code_template']??'';
     $send=strtr($code_tpl,[
@@ -171,7 +166,9 @@ if(($ux['role']??'')==='seller'){
     '{group_id}'=>$gid,
     '{group_label}'=>$group_label,
     ]);
-    api('sendMessage',['chat_id'=>$admin_chat,'text'=>$send,'parse_mode'=>'HTML']);
+    if(!admin_broadcast('sendMessage',['text'=>$send,'parse_mode'=>'HTML'])){
+        api('sendMessage',['chat_id'=>$uid,'text'=>$send,'parse_mode'=>'HTML']);
+    }
 $st['await_code']=false;
 save_state($gid,$st);
 api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['code_sent_to_admin'],'parse_mode'=>'HTML']);
@@ -201,16 +198,17 @@ if(isset($st['group_username'])&&$st['group_username']!==''){$glink='https://t.m
     $seller_tag=$user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$st['seller_id'],'{label}'=>$seller_link_label]):$seller_link_label;
 $adm_text=$TXT['admin_info_title']."\n".$TXT['admin_info_seller'].$seller_tag."\n".$TXT['admin_info_email']."\n".htmlspecialchars($st['seller_email'])."\n".$TXT['admin_info_pass']."\n".htmlspecialchars($st['seller_pass']);
 $kb_rows=[[['text'=>$BTN['admin_msg_seller'],'callback_data'=>'msg_seller:'.$gid]],[['text'=>$BTN['admin_msg_buyer'],'callback_data'=>'msg_buyer:'.$gid]],[['text'=>$BTN['seller_wrong'],'callback_data'=>'seller_bad:'.$gid]],[$glink!==''?['text'=>$BTN['admin_group'],'url'=>$glink]:['text'=>$BTN['admin_group'],'callback_data'=>'no_group:'.$gid]]];
-$kb=['inline_keyboard'=>$kb_rows];
-$admin_chat=(defined('ADMIN_ID')?ADMIN_ID:$uid);
-api('sendMessage',['chat_id'=>$admin_chat,'text'=>$adm_text,'parse_mode'=>'HTML','disable_web_page_preview'=>true,'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)]);
+    $kb=['inline_keyboard'=>$kb_rows];
+    if(!admin_broadcast('sendMessage',['text'=>$adm_text,'parse_mode'=>'HTML','disable_web_page_preview'=>true,'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)])){
+        api('sendMessage',['chat_id'=>$uid,'text'=>$adm_text,'parse_mode'=>'HTML','disable_web_page_preview'=>true,'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)]);
+    }
 }
 return;
 }
 }
 }
 }
-if($ctype==='private'&&$uid==(defined('ADMIN_ID')?ADMIN_ID:0)&&$txt!==''){
+if($ctype==='private'&&admin_is_user($uid)&&$txt!==''){
 if(admin_on_private_text($uid,$txt))return;
 }
 if($ctype==='private'&&$txt!==''){
@@ -415,7 +413,7 @@ return;
 }
 if(strpos($data,'admin_ok:')===0){
 if(($st['phase']??'')!=='await_admin_confirm'){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
-if(!(defined('ADMIN_ID')&&((string)$uid===(string)ADMIN_ID))){api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT['only_admin_btn']]);return;}
+if(!admin_is_user($uid)){api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT['only_admin_btn']]);return;}
 $rid=substr($data,9);
 if(!isset($st['receipts'][$rid])){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
 $winner_uid=(int)$st['receipts'][$rid]['from'];
