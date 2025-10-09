@@ -72,6 +72,7 @@ $TXT=[
 'edit_price'=>'<b>قیمت جدید را ارسال کنید</b>',
 'edited_price_ack'=>'<b>ویرایش قیمت</b>',
 'admin_panel_title'=>'<b>پنل مدیریت</b>',
+'ap_toggle_bot'=>'<b>روشن/خاموش ربات</b>',
 'ap_toggle_auto'=>'<b>روشن/خاموش خودکار</b>',
 'ap_toggle_card'=>'<b>روشن/خاموش کارت به کارت</b>',
 'ap_close'=>'<b>بستن پنل</b>',

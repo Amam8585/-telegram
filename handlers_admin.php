@@ -47,6 +47,13 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             api('answerCallbackQuery', ['callback_query_id' => $qid]);
             return true;
         }
+        if (in_array($data, ['ap_toggle_bot', 'ap_toggle_auto', 'ap_toggle_card'], true)) {
+            $map = [
+                'ap_toggle_bot' => 'bot',
+                'ap_toggle_auto' => 'auto',
+                'ap_toggle_card' => 'card',
+            ];
+            $key = $map[$data];
         if ($data === 'ap_toggle_auto' || $data === 'ap_toggle_card') {
             $key = $data === 'ap_toggle_auto' ? 'auto' : 'card';
             $res = admin_flags_toggle($key);
