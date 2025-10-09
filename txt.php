@@ -118,8 +118,9 @@ $TXT=[
 'send_pass_to_buyer_prefix'=>'🔐 | <b>رمز اکانت شما (</b>',
 'send_pass_to_buyer_suffix'=>') <b>لطفاً وریفای را بررسی کنید</b>',
 'change_done_seller'=>'✅ | <b>چنج انجام شد. ادامه مراحل در گروه معامله</b>',
-'admin_tag_with_link'=>'<a href="tg://user?id={admin_id}">ادمین</a>',
-'admin_tag_plain'=>'ادمین',
+'admin_tag_with_link'=>'<a href="tg://user?id={admin_id}">{admin_label}</a>',
+'admin_tag_plain'=>'{admin_label}',
+'admin_label_template'=>'ادمین {index}',
 'seller_code_group_label'=>'گروه:',
 'seller_code_template'=>'<b>کد تایید فروشنده:</b> <code>{code}</code>'."\n".'<b>{group_label}</b> {group_id}',
 'user_link_template'=>'<a href="tg://user?id={user_id}">{label}</a>',

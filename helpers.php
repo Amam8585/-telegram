@@ -1,5 +1,10 @@
 <?php
 function api($m,$p,$multi=false){$ch=curl_init();curl_setopt_array($ch,[CURLOPT_URL=>'https://api.telegram.org/bot'.BOT_TOKEN.'/'.$m,CURLOPT_POST=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_POSTFIELDS=>$p]);if($multi){curl_setopt($ch,CURLOPT_HTTPHEADER,[]);} $r=curl_exec($ch);curl_close($ch);return json_decode($r,true);}
+function admin_all_ids(){static $cache=null;if($cache!==null)return $cache;$ids=[];if(defined('ADMIN_IDS')){$raw=ADMIN_IDS;if(!is_array($raw)){$raw=[$raw];}foreach($raw as $id){$id=trim((string)$id);if($id!==''){$ids[]=$id;}}}elseif(defined('ADMIN_ID')){$ids[]=(string)ADMIN_ID;}$cache=$ids;return $cache;}
+function admin_primary_id(){ $ids=admin_all_ids();return $ids?($ids[0]):'';}
+function admin_is_user($uid){if($uid===null)return false;$uid=(string)$uid;foreach(admin_all_ids() as $id){if($uid===$id)return true;}return false;}
+function admin_broadcast($method,$params){$ids=admin_all_ids();if(!$ids)return false;foreach($ids as $aid){$payload=$params;$payload['chat_id']=$aid;api($method,$payload);}return true;}
+function admin_mentions_text($TXT){$ids=admin_all_ids();if(!$ids)return '';$label_tpl=$TXT['admin_label_template']??'ادمین {index}';$link_tpl=$TXT['admin_tag_with_link']??'';$plain_tpl=$TXT['admin_tag_plain']??'';$out=[];$i=1;foreach($ids as $id){$label=strtr($label_tpl,['{index}'=>$i]);if($link_tpl!==''){$out[]=strtr($link_tpl,['{admin_id}'=>$id,'{admin_label}'=>$label]);}elseif($plain_tpl!==''){$out[]=strtr($plain_tpl,['{admin_label}'=>$label]);}else{$out[]=$label;}$i++;}return trim(implode(' ',$out));}
 function data_dir(){return __DIR__.'/data';}
 function ensure_dir(){if(!is_dir(data_dir()))@mkdir(data_dir(),0775,true);}
 function st_path($cid){ensure_dir();return data_dir().'/plan_'.$cid.'.json';}

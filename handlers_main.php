@@ -1,7 +1,7 @@
 <?php
 function bot_is_admin_user($user_id)
 {
-    return defined('ADMIN_ID') && ((string)$user_id === (string)ADMIN_ID);
+    return admin_is_user($user_id);
 }
 
 function bot_update_is_from_admin($update)
