@@ -76,10 +76,20 @@ $TXT=[
 'ap_toggle_bot_enable'=>'<b>✅ | روشن کردن ربات</b>',
 'ap_toggle_bot_disable'=>'<b>❌ | خاموش کردن ربات</b>',
 'ap_toggle_auto'=>'<b>روشن/خاموش خودکار</b>',
+'ap_toggle_auto_enable'=>'<b>✅ | روشن کردن خودکار</b>',
+'ap_toggle_auto_disable'=>'<b>❌ | خاموش کردن خودکار</b>',
 'ap_toggle_card'=>'<b>روشن/خاموش کارت به کارت</b>',
+'ap_toggle_card_enable'=>'<b>✅ | روشن کردن کارت به کارت</b>',
+'ap_toggle_card_disable'=>'<b>❌ | خاموش کردن کارت به کارت</b>',
 'ap_close'=>'<b>بستن پنل</b>',
 'ap_closed'=>'<b>پنل بسته شد</b>',
 'ap_saved'=>'<b>ثبت شد</b>',
+'ap_toggle_bot_enabled'=>'<b>ربات روشن شد</b>',
+'ap_toggle_bot_disabled'=>'<b>ربات خاموش شد</b>',
+'ap_toggle_auto_enabled'=>'<b>خودکار روشن شد</b>',
+'ap_toggle_auto_disabled'=>'<b>خودکار خاموش شد</b>',
+'ap_toggle_card_enabled'=>'<b>کارت به کارت روشن شد</b>',
+'ap_toggle_card_disabled'=>'<b>کارت به کارت خاموش شد</b>',
 'ap_status_enabled'=>'✅ <b>فعال</b>',
 'ap_status_disabled'=>'❌ <b>غیرفعال</b>',
 'ap_bot_status_label'=>'🤖 | <b>ربات:</b> ',
