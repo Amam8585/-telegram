@@ -1,2 +1,2 @@
-# -telegram
-Tel bot test
+# telegram bot
+this is beta version only
