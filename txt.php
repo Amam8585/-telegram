@@ -38,6 +38,16 @@ $TXT=[
 'invoice_total_title'=>'<b>💳 | مبلغ نهایی پرداخت</b>',
 'invoice_total_value_prefix'=>'<b>',
 'invoice_total_value_suffix'=>' تومان</b>',
+'invoice_header_template'=>'<b>🧾| {title}:</b>',
+'invoice_total_heading_template'=>'<b>💵| {title}:</b>',
+'invoice_total_amount_template'=>'<b>({amount} {currency})</b>',
+'invoice_gateway_plain'=>'🖨️ | کارمزد درگاه',
+'invoice_gateway_notice'=>'<blockquote><b>🖨️ | کارمزد خودکار اضافه میشود</b></blockquote>',
+'currency_suffix_plain'=>'تومان',
+'save_name_misc'=>'سایر گیم‌ها/پیج',
+'save_name_act'=>'اکتیویژن',
+'save_name_fb'=>'فیسبوک',
+'save_name_gg'=>'گوگل',
 'receipt_agreed_amount_prefix'=>'مبلغ توافق‌شده: ',
 'receipt_agreed_amount_suffix'=>' تومان',
 'admin_wait_confirm'=>'<b>منتظر تایید ادمین بمانید</b>',
@@ -62,11 +72,20 @@ $TXT=[
 'edit_price'=>'<b>قیمت جدید را ارسال کنید</b>',
 'edited_price_ack'=>'<b>ویرایش قیمت</b>',
 'admin_panel_title'=>'<b>پنل مدیریت</b>',
+'ap_toggle_bot'=>'<b>روشن/خاموش ربات</b>',
 'ap_toggle_auto'=>'<b>روشن/خاموش خودکار</b>',
 'ap_toggle_card'=>'<b>روشن/خاموش کارت به کارت</b>',
 'ap_close'=>'<b>بستن پنل</b>',
 'ap_closed'=>'<b>پنل بسته شد</b>',
 'ap_saved'=>'<b>ثبت شد</b>',
+'ap_status_enabled'=>'✅ <b>فعال</b>',
+'ap_status_disabled'=>'❌ <b>غیرفعال</b>',
+'ap_bot_status_label'=>'🔌 | <b>ربات:</b> ',
+'ap_auto_status_label'=>'🤖 | <b>خودکار:</b> ',
+'ap_card_status_label'=>'💳 | <b>کارت به کارت:</b> ',
+'ap_toggle_suffix_enabled'=>' ✅',
+'ap_toggle_suffix_disabled'=>' ❌',
+'bot_disabled_notice'=>'<b>ربات موقتاً غیرفعال است. لطفاً بعداً تلاش کنید.</b>',
 'clean_limit'=>'⏳ ┇ <b>در هر ۳۰ دقیقه فقط ۲ بار می‌توانید /clean را اجرا کنید</b>',
 'clean_try_after'=>'🕐 | <b>بعداً تلاش کنید</b>',
 'lock_btn'=>'🔒 ┇ <b>این دکمه قفل است</b>',
@@ -87,6 +106,18 @@ $TXT=[
 'send_pass_to_buyer_prefix'=>'🔐 | <b>رمز اکانت شما (</b>',
 'send_pass_to_buyer_suffix'=>') <b>لطفاً وریفای را بررسی کنید</b>',
 'change_done_seller'=>'✅ | <b>چنج انجام شد. ادامه مراحل در گروه معامله</b>',
+'admin_tag_with_link'=>'<a href="tg://user?id={admin_id}">ادمین</a>',
+'admin_tag_plain'=>'ادمین',
+'seller_code_group_label'=>'گروه:',
+'seller_code_template'=>'<b>کد تایید فروشنده:</b> <code>{code}</code>'."\n".'<b>{group_label}</b> {group_id}',
+'user_link_template'=>'<a href="tg://user?id={user_id}">{label}</a>',
+'admin_profile_view_label'=>'مشاهده',
+'card_amount_value_template'=>'<b>{amount} {currency}</b>',
+'user_generic_label'=>'کاربر',
+'buyer_label'=>'خریدار',
+'seller_label'=>'فروشنده',
+'unknown_user_label'=>'<b>نامشخص</b>',
+'build_pay_error'=>'<b>خطا در ساخت لینک پرداخت</b>',
 'admin_paid_msg'=>
 '💸 ┇ <b>واریز خریدار تایید شد ✔️</b>'."\n".
 '────────────────────────────'."\n".
@@ -102,7 +133,34 @@ $TXT=[
 'https://t.me/{bot_username}?start=get_{seller_token}'."\n".
 '────────────────────────────'."\n".
 '⚠️ ┇ <b>توجه:</b> هیچ اطلاعاتی مانند جیمیل، رمز یا کد را در گروه یا پیوی ارسال نکنید',
-'bot_username'=>'Uwhehshshhbot'
+'bot_username'=>'Uwhehshshhbot',
+'zp_back_bad_request'=>'BAD REQUEST',
+'zp_back_not_found'=>'NOT FOUND',
+'zp_back_curl_error_prefix'=>'CURL ERROR: ',
+'zp_success_edit_title'=>'پرداخت موفق ✅',
+'zp_success_button_text'=>'پرداخت موفق',
+'zp_success_seller_line'=>'لینک فروشنده:'."\n".'{seller_link}'."\n",
+'zp_success_buyer_line'=>'لینک خریدار:'."\n".'{buyer_link}'."\n",
+'zp_success_message'=>'پرداخت با موفقیت تایید شد.'."\n".'شماره پیگیری: <b>{ref_id}</b>'."\n".'کارت پرداخت: <code>{card_pan}</code>'."\n\n".'خریدار و فروشنده عزیز برای ادامه مراحل روی لینک‌های زیر بزنید:'."\n".'{seller_section}{buyer_section}'."\n".'هر لینک مخصوص همین گروه است.',
+'zp_verify_error_prefix'=>'ZP VERIFY ERROR ',
+'zp_verify_failed'=>'FAILED',
+'zp_req_bad_request_title'=>'BAD REQUEST',
+'zp_req_bad_request_message'=>'درخواست نامعتبر است.',
+'zp_req_not_found_title'=>'NOT FOUND',
+'zp_req_not_found_message'=>'معامله یافت نشد.',
+'zp_req_missing_data_message'=>'اطلاعات معامله در دسترس نیست.',
+'zp_req_total_zero_title'=>'TOTAL ZERO',
+'zp_req_total_zero_message'=>'مبلغ قابل پرداخت نامعتبر است.',
+'zp_req_expired_title'=>'EXPIRED',
+'zp_req_expired_message'=>'این لینک منقضی شده است. پرداخت قبلاً با موفقیت انجام شده.',
+'zp_req_description_template'=>'پرداخت معامله {group_id}',
+'zp_req_error_title'=>'خطا',
+'zp_req_gateway_error_message'=>'خطا در اتصال به درگاه. لطفاً مجدداً تلاش کنید.',
+'zp_req_redirect_title'=>'انتقال به درگاه',
+'zp_req_redirect_heading'=>'در حال انتقال به درگاه پرداخت...',
+'zp_req_redirect_hint'=>'اگر به صورت خودکار منتقل نشدید روی دکمه زیر بزنید.',
+'zp_req_redirect_button'=>'رفتن به صفحه پرداخت',
+'zp_req_create_error_message'=>'خطا در ایجاد تراکنش.'
 ];
 $BTN=[
 'google'=>'گوگل',
