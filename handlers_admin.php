@@ -101,7 +101,11 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             return true;
         }
         if (strpos($data, 'msg_buyer:') === 0) {
-            $gid = (int)substr($data, 11);
+            $gid = trim(substr($data, 11));
+            if ($gid === '') {
+                api('answerCallbackQuery', ['callback_query_id' => $qid]);
+                return true;
+            }
             $gs = load_state($gid);
             if (!$gs) {
                 api('answerCallbackQuery', ['callback_query_id' => $qid]);
@@ -129,7 +133,11 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             return true;
         }
         if (strpos($data, 'msg_seller:') === 0) {
-            $gid = (int)substr($data, 12);
+            $gid = trim(substr($data, 12));
+            if ($gid === '') {
+                api('answerCallbackQuery', ['callback_query_id' => $qid]);
+                return true;
+            }
             $gs = load_state($gid);
             if (!$gs) {
                 api('answerCallbackQuery', ['callback_query_id' => $qid]);
@@ -157,7 +165,11 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             return true;
         }
         if (strpos($data, 'seller_bad:') === 0) {
-            $gid = (int)substr($data, 11);
+            $gid = trim(substr($data, 11));
+            if ($gid === '') {
+                api('answerCallbackQuery', ['callback_query_id' => $qid]);
+                return true;
+            }
             $gs = load_state($gid);
             if (!$gs) {
                 api('answerCallbackQuery', ['callback_query_id' => $qid]);

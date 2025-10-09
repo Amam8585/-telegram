@@ -231,6 +231,8 @@ save_state($gid,$st);
 $glink=ensure_admin_group_link($gid,$st);
     $user_link_tpl=$TXT['user_link_template']??'';
     $view_profile=$TXT['admin_profile_view_label']??'';
+    $missing_html=$TXT['admin_info_missing_value']??'<b>نامشخص</b>';
+    $missing_plain=trim(strip_tags($missing_html));
     $seller_username=$st['seller_username']??'';
     $seller_link_label=$seller_username!==''?'@'.$seller_username:$view_profile;
     $seller_tag=$user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$st['seller_id'],'{label}'=>$seller_link_label]):$seller_link_label;
