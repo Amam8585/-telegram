@@ -4,19 +4,33 @@ function admin_panel_render($flags=null){
     if ($flags === null) {
         $flags = admin_flags_all();
     }
+    $bot_disabled = (bool)($flags['bot'] ?? false);
     $auto_disabled = (bool)($flags['auto'] ?? false);
     $card_disabled = (bool)($flags['card'] ?? false);
 
     $text = $TXT['admin_panel_title'] . "\n";
-    $text .= '🤖 | <b>خودکار:</b> ' . ($auto_disabled ? '❌ <b>غیرفعال</b>' : '✅ <b>فعال</b>') . "\n";
-    $text .= '💳 | <b>کارت به کارت:</b> ' . ($card_disabled ? '❌ <b>غیرفعال</b>' : '✅ <b>فعال</b>');
+    $status_enabled = $TXT['ap_status_enabled'] ?? '✅ <b>فعال</b>';
+    $status_disabled = $TXT['ap_status_disabled'] ?? '❌ <b>غیرفعال</b>';
+    $bot_label = $TXT['ap_bot_status_label'] ?? '🤖 | <b>ربات:</b> ';
+    $auto_label = $TXT['ap_auto_status_label'] ?? '🤖 | <b>خودکار:</b> ';
+    $card_label = $TXT['ap_card_status_label'] ?? '💳 | <b>کارت به کارت:</b> ';
 
-    $btn_auto = trim(strip_tags($TXT['ap_toggle_auto'] ?? 'روشن/خاموش خودکار')) . ($auto_disabled ? ' ❌' : ' ✅');
-    $btn_card = trim(strip_tags($TXT['ap_toggle_card'] ?? 'روشن/خاموش کارت به کارت')) . ($card_disabled ? ' ❌' : ' ✅');
+    $text .= $bot_label . ($bot_disabled ? $status_disabled : $status_enabled) . "\n";
+    $text .= $auto_label . ($auto_disabled ? $status_disabled : $status_enabled) . "\n";
+    $text .= $card_label . ($card_disabled ? $status_disabled : $status_enabled);
+
+    $suffix_enabled = trim(strip_tags($TXT['ap_toggle_suffix_enabled'] ?? ' ✅'));
+    $suffix_disabled = trim(strip_tags($TXT['ap_toggle_suffix_disabled'] ?? ' ❌'));
+    $btn_bot = trim(strip_tags($TXT['ap_toggle_bot'] ?? 'روشن/خاموش ربات')) . ($bot_disabled ? $suffix_disabled : $suffix_enabled);
+    $btn_auto = trim(strip_tags($TXT['ap_toggle_auto'] ?? 'روشن/خاموش خودکار')) . ($auto_disabled ? $suffix_disabled : $suffix_enabled);
+    $btn_card = trim(strip_tags($TXT['ap_toggle_card'] ?? 'روشن/خاموش کارت به کارت')) . ($card_disabled ? $suffix_disabled : $suffix_enabled);
     $btn_close = trim(strip_tags($TXT['ap_close'] ?? 'بستن پنل'));
 
     $kb = [
         'inline_keyboard' => [
+            [
+                ['text' => $btn_bot, 'callback_data' => 'ap_toggle_bot'],
+            ],
             [
                 ['text' => $btn_auto, 'callback_data' => 'ap_toggle_auto'],
             ],
