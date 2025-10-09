@@ -46,6 +46,18 @@ function admin_panel_render($flags=null){
     return [$text, $kb];
 }
 
+function admin_extract_callback_gid($data, $prefix)
+{
+    if (strpos($data, $prefix) !== 0) {
+        return '';
+    }
+    $gid = trim(substr($data, strlen($prefix)));
+    if ($gid === '' || !preg_match('/^-?\d+$/', $gid)) {
+        return '';
+    }
+    return $gid;
+}
+
 function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
 {
     global $TXT, $BTN;
@@ -101,7 +113,7 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             return true;
         }
         if (strpos($data, 'msg_buyer:') === 0) {
-            $gid = trim(substr($data, 11));
+            $gid = admin_extract_callback_gid($data, 'msg_buyer:');
             if ($gid === '') {
                 api('answerCallbackQuery', ['callback_query_id' => $qid]);
                 return true;
@@ -133,7 +145,7 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             return true;
         }
         if (strpos($data, 'msg_seller:') === 0) {
-            $gid = trim(substr($data, 12));
+            $gid = admin_extract_callback_gid($data, 'msg_seller:');
             if ($gid === '') {
                 api('answerCallbackQuery', ['callback_query_id' => $qid]);
                 return true;
@@ -165,7 +177,7 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             return true;
         }
         if (strpos($data, 'seller_bad:') === 0) {
-            $gid = trim(substr($data, 11));
+            $gid = admin_extract_callback_gid($data, 'seller_bad:');
             if ($gid === '') {
                 api('answerCallbackQuery', ['callback_query_id' => $qid]);
                 return true;
@@ -192,7 +204,7 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             return true;
         }
         if (strpos($data, 'req_code:') === 0) {
-            $gid = substr($data, 9);
+            $gid = admin_extract_callback_gid($data, 'req_code:');
             $gs = load_state($gid);
             if ($gs && ($gs['seller_id'] ?? 0) > 0) {
                 api('sendMessage', ['chat_id' => $gs['seller_id'], 'text' => $TXT['ask_seller_code'], 'parse_mode' => 'HTML']);
@@ -203,7 +215,7 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             return true;
         }
         if (strpos($data, 'finish_change:') === 0) {
-            $gid = substr($data, 14);
+            $gid = admin_extract_callback_gid($data, 'finish_change:');
             $gs = load_state($gid);
             if (!$gs) {
                 api('answerCallbackQuery', ['callback_query_id' => $qid]);
