@@ -75,10 +75,14 @@ return;
 }
 if($ctype==='group'||$ctype==='supergroup'){
 $st=load_state($cid);
-if($st&&($st['phase']??'')==='await_receipt'&&((isset($m['photo'])&&is_array($m['photo']))||isset($m['document']))){
-$amt=(int)($st['total']??get_total($st));
-$admin_tag=(defined('ADMIN_ID')?('<a href="tg://user?id='.ADMIN_ID.'">ادمین</a>'):'ادمین');
-$msg=$admin_tag.' '.$TXT['receipt_agreed_amount_prefix'].number_format($amt).$TXT['receipt_agreed_amount_suffix']."\n".$TXT['admin_wait_confirm_short'];
+    if($st&&($st['phase']??'')==='await_receipt'&&((isset($m['photo'])&&is_array($m['photo']))||isset($m['document']))){
+    $amt=(int)($st['total']??get_total($st));
+    $admin_tag_tpl=$TXT['admin_tag_with_link']??'';
+    $admin_tag_plain=$TXT['admin_tag_plain']??'';
+    if(defined('ADMIN_ID')&&$admin_tag_tpl!==''){$admin_tag=strtr($admin_tag_tpl,['{admin_id}'=>ADMIN_ID]);}
+    elseif($admin_tag_plain!==''){$admin_tag=$admin_tag_plain;}
+    else{$admin_tag='';}
+    $msg=$admin_tag.' '.$TXT['receipt_agreed_amount_prefix'].number_format($amt).$TXT['receipt_agreed_amount_suffix']."\n".$TXT['admin_wait_confirm_short'];
 $rid=bin2hex(random_bytes(3));
 $kb=['inline_keyboard'=>[[['text'=>$BTN['admin_approve'],'callback_data'=>'admin_ok:'.$rid]]]];
 $res=api('sendMessage',['chat_id'=>$cid,'text'=>$msg,'parse_mode'=>'HTML','reply_to_message_id'=>$m['message_id'],'allow_sending_without_reply'=>true,'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)]);
@@ -158,10 +162,16 @@ api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['buyer_email_ok'],'parse_mode'=>
 return;
 }
 if(($ux['role']??'')==='seller'){
-if(($st['await_code']??false)===true){
-$admin_chat=(defined('ADMIN_ID')?ADMIN_ID:$uid);
-$send="<b>کد تایید فروشنده:</b> <code>".htmlspecialchars($txt)."</code>\n<b>Group:</b> ".$gid;
-api('sendMessage',['chat_id'=>$admin_chat,'text'=>$send,'parse_mode'=>'HTML']);
+    if(($st['await_code']??false)===true){
+    $admin_chat=(defined('ADMIN_ID')?ADMIN_ID:$uid);
+    $group_label=$TXT['seller_code_group_label']??'Group:';
+    $code_tpl=$TXT['seller_code_template']??'';
+    $send=strtr($code_tpl,[
+    '{code}'=>htmlspecialchars($txt),
+    '{group_id}'=>$gid,
+    '{group_label}'=>$group_label,
+    ]);
+    api('sendMessage',['chat_id'=>$admin_chat,'text'=>$send,'parse_mode'=>'HTML']);
 $st['await_code']=false;
 save_state($gid,$st);
 api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['code_sent_to_admin'],'parse_mode'=>'HTML']);
@@ -184,7 +194,11 @@ $st['notified_admin']=true;
 save_state($gid,$st);
 $glink='';
 if(isset($st['group_username'])&&$st['group_username']!==''){$glink='https://t.me/'.$st['group_username'];}
-$seller_tag='<a href="tg://user?id='.$st['seller_id'].'">'.((isset($st['seller_username'])&&$st['seller_username']!=='')?('@'.$st['seller_username']):'مشاهده').'</a>';
+    $user_link_tpl=$TXT['user_link_template']??'';
+    $view_profile=$TXT['admin_profile_view_label']??'';
+    $seller_username=$st['seller_username']??'';
+    $seller_link_label=$seller_username!==''?'@'.$seller_username:$view_profile;
+    $seller_tag=$user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$st['seller_id'],'{label}'=>$seller_link_label]):$seller_link_label;
 $adm_text=$TXT['admin_info_title']."\n".$TXT['admin_info_seller'].$seller_tag."\n".$TXT['admin_info_email']."\n".htmlspecialchars($st['seller_email'])."\n".$TXT['admin_info_pass']."\n".htmlspecialchars($st['seller_pass']);
 $kb_rows=[[['text'=>$BTN['admin_msg_seller'],'callback_data'=>'msg_seller:'.$gid]],[['text'=>$BTN['admin_msg_buyer'],'callback_data'=>'msg_buyer:'.$gid]],[['text'=>$BTN['seller_wrong'],'callback_data'=>'seller_bad:'.$gid]],[$glink!==''?['text'=>$BTN['admin_group'],'url'=>$glink]:['text'=>$BTN['admin_group'],'callback_data'=>'no_group:'.$gid]]];
 $kb=['inline_keyboard'=>$kb_rows];
@@ -342,7 +356,10 @@ $st['total']=$total;
 $st['payer_id']=null;
 save_state($cid,$st);
 $kb=['inline_keyboard'=>[[['text'=>$BTN['build_pay'],'callback_data'=>'build_pay']],[['text'=>$BTN['change_method'],'callback_data'=>'back_method']]]];
-api('editMessageText',['chat_id'=>$cid,'message_id'=>$mid,'text'=>$TXT['invoice_total_title']."\n".'<b>'.number_format($total).' تومان</b>','parse_mode'=>'HTML']);
+    $total_prefix=$TXT['invoice_total_value_prefix']??'';
+    $total_suffix=$TXT['invoice_total_value_suffix']??'';
+    $total_line=$total_prefix.number_format($total).$total_suffix;
+    api('editMessageText',['chat_id'=>$cid,'message_id'=>$mid,'text'=>$TXT['invoice_total_title']."\n".$total_line,'parse_mode'=>'HTML']);
 api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)]);
 api('answerCallbackQuery',['callback_query_id'=>$qid]);
 return;
@@ -352,7 +369,7 @@ if(($st['phase']??'')!=='pay_auto'){api('answerCallbackQuery',['callback_query_i
 $st['payer_id']=$uid;
 save_state($cid,$st);
 $res=build_zp_link($cid,$st['total'],$uid);
-if(!$res['ok']){api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$res['err']??'ERR']);return;}
+if(!$res['ok']){$err=$res['err']??($TXT['build_pay_error']??'');api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$err]);return;}
 $kb=['inline_keyboard'=>[[['text'=>$BTN['pay_link'],'url'=>$res['url']]]]];
 api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)]);
 api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT['paylink_ready']]);
@@ -363,7 +380,10 @@ if(($st['phase']??'')!=='method'){api('answerCallbackQuery',['callback_query_id'
 if(function_exists('admin_flags_is_disabled')&&admin_flags_is_disabled('card')){api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT['method_disabled']]);return;}
 $total=(int)($st['total']??get_total($st));
 $card=(defined('ADMIN_CARD')&&ADMIN_CARD)?ADMIN_CARD:((defined('CARD_NUMBER')&&CARD_NUMBER)?CARD_NUMBER:'6219-0000-0000-0000');
-$text=$TXT['card_number_label'].'<code>'.$card.'</code>'."\n".$TXT['card_amount_label'].'<b>'.number_format($total).' تومان</b>'."\n".$TXT['card_after_label'];
+    $currency=$TXT['currency_suffix_plain']??'';
+    $amount_tpl=$TXT['card_amount_value_template']??'';
+    $amount_line=$amount_tpl!==''?strtr($amount_tpl,['{amount}'=>number_format($total),'{currency}'=>$currency]):number_format($total).($currency!==''?' '.$currency:'');
+$text=$TXT['card_number_label'].'<code>'.$card.'</code>'."\n".$TXT['card_amount_label'].$amount_line."\n".$TXT['card_after_label'];
 $kb=['inline_keyboard'=>[[['text'=>$BTN['card_paid'],'callback_data'=>'card_paid']],[['text'=>$BTN['change_method'],'callback_data'=>'back_method']]]];
 api('editMessageText',['chat_id'=>$cid,'message_id'=>$mid,'text'=>$text,'parse_mode'=>'HTML','disable_web_page_preview'=>true]);
 api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)]);
@@ -384,7 +404,9 @@ return;
 }
 if($data==='card_paid'){
 if(!in_array(($st['phase']??''),['card_info_shown','await_receipt','await_admin_confirm'])){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
-$mention=$un?('@'.$un):('<a href="tg://user?id='.$uid.'">کاربر</a>');
+    $user_link_tpl=$TXT['user_link_template']??'';
+    $generic_user=$TXT['user_generic_label']??'';
+    $mention=$un?('@'.$un):($user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$uid,'{label}'=>$generic_user]):$generic_user);
 api('sendMessage',['chat_id'=>$cid,'text'=>$mention.' '.$TXT['card_send_receipt_prompt'],'parse_mode'=>'HTML']);
 $st['phase']='await_receipt';
 save_state($cid,$st);
@@ -398,9 +420,18 @@ $rid=substr($data,9);
 if(!isset($st['receipts'][$rid])){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
 $winner_uid=(int)$st['receipts'][$rid]['from'];
 $st['buyer_id']=$winner_uid;
-$buyer_tag='<a href="tg://user?id='.$winner_uid.'">خریدار</a>';
+    $user_link_tpl=$TXT['user_link_template']??'';
+$buyer_username=$st['buyer_username']??'';
+    $buyer_label=$buyer_username!==''?'@'.$buyer_username:($TXT['buyer_label']??'');
+    $buyer_tag=$user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$winner_uid,'{label}'=>$buyer_label]):$buyer_label;
 $seller_id=(int)($st['seller_id']??0);
-$seller_tag=$seller_id>0?('<a href="tg://user?id='.$seller_id.'">فروشنده</a>'):'<b>نامشخص</b>';
+    $unknown_label=$TXT['unknown_user_label']??'';
+    $seller_tag=$unknown_label;
+if($seller_id>0){
+$seller_username=$st['seller_username']??'';
+    $seller_label=$seller_username!==''?'@'.$seller_username:($TXT['seller_label']??'');
+    $seller_tag=$user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$seller_id,'{label}'=>$seller_label]):$seller_label;
+}
 $buyer_token=bin2hex(random_bytes(8));
 $seller_token=bin2hex(random_bytes(8));
 $st['link_tokens']=['buyer'=>$buyer_token,'seller'=>$seller_token];
