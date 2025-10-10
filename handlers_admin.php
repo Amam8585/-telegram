@@ -192,6 +192,7 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                 $gs['seller_email'] = null;
                 $gs['seller_pass'] = null;
                 $gs['await_code'] = false;
+                unset($gs['notified_admin']);
                 save_state($gid, $gs);
                 save_uctx($sel, ['chat_id' => $gid, 'role' => 'seller', 'need' => 'email']);
                 api('sendMessage', ['chat_id' => $sel, 'text' => $TXT['seller_reask'], 'parse_mode' => 'HTML']);
