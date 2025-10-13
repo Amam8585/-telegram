@@ -314,17 +314,7 @@ if(($ux['role']??'')==='seller'){
 }
 }
 if($ctype==='private'&&$txt!==''){
-$files=list_plan_files();
-foreach($files as $f){
-$a=@json_decode(@file_get_contents($f),true);
-if(!is_array($a))continue;
-$br=$a['bridge']??null;
-if(is_array($br)&&($br['on']??false)){
-$admin_id=(int)($br['admin']??0);
-if($uid===($a['buyer_id']??-1)&&$admin_id>0){api('sendMessage',['chat_id'=>$admin_id,'text'=>$TXT['reply_from_buyer_prefix'].$txt,'parse_mode'=>'HTML']);return;}
-if($uid===($a['seller_id']??-1)&&$admin_id>0){api('sendMessage',['chat_id'=>$admin_id,'text'=>$TXT['reply_from_seller_prefix'].$txt,'parse_mode'=>'HTML']);return;}
-}
-}
+if(user_bridge_forward($uid,$txt))return;
 }
 if(in_array($ctype,['group','supergroup'])&&$txt&&!$cmd){
 $st=load_state($cid);
