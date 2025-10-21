@@ -100,12 +100,16 @@ function channel_force_join_error_text()
  * Check whether a Telegram user is a member of the required channel.
  *
  * @param int|string $user_id
+ * @param bool $refresh Force a fresh API request when true.
  * @return bool|null True if member, false if not, null on API error.
  */
-function channel_is_user_member($user_id)
+function channel_is_user_member($user_id, $refresh = false)
 {
     static $cache = [];
     $key = (string) $user_id;
+    if ($refresh) {
+        unset($cache[$key]);
+    }
     if (isset($cache[$key])) {
         return $cache[$key];
     }
@@ -220,7 +224,7 @@ function channel_handle_callback($callback)
         return true;
     }
 
-    $membership = channel_is_user_member($user_id);
+    $membership = channel_is_user_member($user_id, true);
     if ($membership === true) {
         if ($message_id) {
             api('editMessageText', [
