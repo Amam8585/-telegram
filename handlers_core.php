@@ -319,10 +319,30 @@ if(($ux['role']??'')==='seller'){
                 $view_profile=$TXT['admin_profile_view_label']??'';
                 $missing_html=$TXT['admin_info_missing_value']??'<b>نامشخص</b>';
                 $missing_plain=trim(strip_tags($missing_html));
+                $seller_id=(int)($st['seller_id']??0);
                 $seller_username=$st['seller_username']??'';
                 $seller_link_label=$seller_username!==''?'@'.$seller_username:$view_profile;
-                $seller_tag=$user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$st['seller_id'],'{label}'=>$seller_link_label]):$seller_link_label;
-                $adm_text=$TXT['admin_info_title']."\n".$TXT['admin_info_seller'].$seller_tag."\n".$TXT['admin_info_email']."\n".htmlspecialchars($st['seller_email'])."\n".$TXT['admin_info_pass']."\n".htmlspecialchars($st['seller_pass']);
+                $seller_tag=$seller_id>0
+                    ? ($user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$seller_id,'{label}'=>$seller_link_label]):$seller_link_label)
+                    : $missing_html;
+                $buyer_id=(int)($st['buyer_id']??0);
+                $buyer_username=$st['buyer_username']??'';
+                $buyer_link_label=$buyer_username!==''?'@'.$buyer_username:$view_profile;
+                $buyer_tag=$buyer_id>0
+                    ? ($user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$buyer_id,'{label}'=>$buyer_link_label]):$buyer_link_label)
+                    : $missing_html;
+                $seller_email_txt=trim($st['seller_email']??'');
+                $seller_email_html=$seller_email_txt!==''?htmlspecialchars($seller_email_txt):$missing_html;
+                $seller_pass_txt=$st['seller_pass']??'';
+                $seller_pass_html=$seller_pass_txt!==''?htmlspecialchars($seller_pass_txt):$missing_html;
+                $buyer_email_txt=trim($st['buyer_email']??'');
+                $buyer_email_html=$buyer_email_txt!==''?htmlspecialchars($buyer_email_txt):$missing_html;
+                $adm_text=$TXT['admin_info_title']."\n"
+                    .$TXT['admin_info_buyer'].$buyer_tag."\n"
+                    .$TXT['admin_info_buyer_email']."\n".$buyer_email_html."\n"
+                    .$TXT['admin_info_seller'].$seller_tag."\n"
+                    .$TXT['admin_info_email']."\n".$seller_email_html."\n"
+                    .$TXT['admin_info_pass']."\n".$seller_pass_html;
                 $kb_rows=[
                     [
                         ['text'=>$BTN['admin_request_code'],'callback_data'=>'req_code:'.$gid]
