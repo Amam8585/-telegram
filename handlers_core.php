@@ -37,18 +37,30 @@ api('sendMessage',['chat_id'=>$cid,'text'=>$TXT['rules_title'],'parse_mode'=>'HT
 function autoplan_on_join($cid,$chat,$members){
 $apf=data_dir().'/ap_'.$cid.'.json';
 $rec=@json_decode(@file_get_contents($apf),true);
-if(!is_array($rec)){$rec=['first'=>0,'count'=>0,'scheduled'=>false];}
+if(!is_array($rec)){$rec=['first'=>0,'users'=>[],'scheduled'=>false];}
 $now=time();
-$cnt=is_array($members)?count($members):0;
-$ok=false;
-if($cnt>=2){$ok=true;}else{
-if(($rec['first']??0)>0&&($now-($rec['first']??0))<=1800){$rec['count']=intval($rec['count']??0)+1;$ok=$rec['count']>=2;}else{$rec=['first'=>$now,'count'=>1,'scheduled'=>false];}
+$first=(int)($rec['first']??0);
+$users=$rec['users']??[];
+if(!is_array($users)){$users=[];}
+if($first<=0||($now-$first)>1800){
+$rec=['first'=>$now,'users'=>[],'scheduled'=>false];
+$users=[];
+$first=$now;
 }
+if(is_array($members)){
+foreach($members as $m){
+$uid=(int)($m['id']??0);
+if($uid<=0)continue;
+if(!in_array($uid,$users,true)){$users[]=$uid;}
+}
+}
+$rec['users']=$users;
+$ok=count($users)>=2;
 if($ok&&!($rec['scheduled']??false)){
 $rec['scheduled']=true;
 @file_put_contents($apf,json_encode($rec,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),LOCK_EX);
 $st=load_state($cid);
-if(!$st||($st['phase']??'')==='done'){sleep(6);start_plan_now($cid,$chat,0);}
+if(!$st||($st['phase']??'')==='done'){sleep(10);start_plan_now($cid,$chat,0);}
 @unlink($apf);
 }else{
 @file_put_contents($apf,json_encode($rec,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),LOCK_EX);
