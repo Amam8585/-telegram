@@ -194,7 +194,7 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                 $gs['await_code'] = false;
                 unset($gs['notified_admin']);
                 save_state($gid, $gs);
-                save_uctx($sel, ['chat_id' => $gid, 'role' => 'seller', 'need' => 'email']);
+                save_uctx($sel, ['chat_id' => $gid, 'role' => 'seller', 'need' => 'email', 'token' => $gs['token'] ?? '']);
                 api('sendMessage', ['chat_id' => $sel, 'text' => $TXT['seller_reask'], 'parse_mode' => 'HTML']);
             }
             api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['sent']]);
