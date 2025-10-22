@@ -312,6 +312,12 @@ if(($ux['role']??'')==='seller'){
             '{group_id}'=>$gid,
             '{group_label}'=>$group_label,
         ]);
+        $buyer_email_label=$TXT['admin_info_buyer_email']??'';
+        $buyer_email_txt=trim((string)($st['buyer_email']??''));
+        if($buyer_email_txt!==''){
+            $label_line=$buyer_email_label!==''?$buyer_email_label:'<b>جیمیل خریدار:</b>';
+            $send.="\n".$label_line."\n".htmlspecialchars($buyer_email_txt);
+        }
         $delivered=false;
         if($code_admin_id>0){
             $res=api('sendMessage',['chat_id'=>$code_admin_id,'text'=>$send,'parse_mode'=>'HTML']);
