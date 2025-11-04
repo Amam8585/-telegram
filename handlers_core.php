@@ -260,25 +260,33 @@ $used_b=$st['link_tokens_used']['buyer'];
 $used_s=$st['link_tokens_used']['seller'];
 if(($role==='buyer'&&$used_b!==null&&$used_b!=$uid)||($role==='seller'&&$used_s!==null&&$used_s!=$uid)){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_used_by_other'],'parse_mode'=>'HTML']);return;}
 if(($role==='buyer'&&$used_s!==null&&$used_s==$uid)||($role==='seller'&&$used_b!==null&&$used_b==$uid)){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_cannot_use_both'],'parse_mode'=>'HTML']);return;}
-if($role==='buyer'){
-$st['link_tokens_used']['buyer']=$uid;
-$st['buyer_id']=$uid;
-$st['buyer_username']=$un??'';
-save_state($chat_id,$st);
-refresh_admin_paid_message($chat_id,$st);
-save_uctx($uid,['chat_id'=>$chat_id,'role'=>'buyer','token'=>$st['token']??'']);
-api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['buyer_start'],'parse_mode'=>'HTML']);
-return;
-}else{
-$st['link_tokens_used']['seller']=$uid;
-$st['seller_id']=$uid;
-$st['seller_username']=$un??'';
-save_state($chat_id,$st);
-refresh_admin_paid_message($chat_id,$st);
-save_uctx($uid,['chat_id'=>$chat_id,'role'=>'seller','need'=>'email','token'=>$st['token']??'']);
-api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['seller_start'],'parse_mode'=>'HTML']);
-return;
-}
+        if($role==='buyer'){
+            if(is_whitelisted_user($uid)){
+                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['whitelisted_user_rejected']??'<b>دسترسی مجاز نیست</b>','parse_mode'=>'HTML']);
+                return;
+            }
+            $st['link_tokens_used']['buyer']=$uid;
+            $st['buyer_id']=$uid;
+            $st['buyer_username']=$un??'';
+            save_state($chat_id,$st);
+            refresh_admin_paid_message($chat_id,$st);
+            save_uctx($uid,['chat_id'=>$chat_id,'role'=>'buyer','token'=>$st['token']??'']);
+            api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['buyer_start'],'parse_mode'=>'HTML']);
+            return;
+        }else{
+            if(is_whitelisted_user($uid)){
+                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['whitelisted_user_rejected']??'<b>دسترسی مجاز نیست</b>','parse_mode'=>'HTML']);
+                return;
+            }
+            $st['link_tokens_used']['seller']=$uid;
+            $st['seller_id']=$uid;
+            $st['seller_username']=$un??'';
+            save_state($chat_id,$st);
+            refresh_admin_paid_message($chat_id,$st);
+            save_uctx($uid,['chat_id'=>$chat_id,'role'=>'seller','need'=>'email','token'=>$st['token']??'']);
+            api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['seller_start'],'parse_mode'=>'HTML']);
+            return;
+        }
 }
 if(($info['kind']??'')==='role'){
 $st=load_state($info['chat_id']);
@@ -290,21 +298,29 @@ $ctx=resolve_plan_user_context($uid,$st,$info['chat_id']);
 if($ctx['role']!==null){$known_role=$ctx['role'];}
 if($known_role==='buyer'&&$info['role']==='seller'){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_wrong_for_buyer'],'parse_mode'=>'HTML']);return;}
 if($known_role==='seller'&&$info['role']==='buyer'){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_wrong_for_seller'],'parse_mode'=>'HTML']);return;}
-if($info['role']==='buyer'){
-if(($st['buyer_id']??0)===0){$st['buyer_id']=$uid;$st['buyer_username']=$un??'';}elseif($st['buyer_id']!=$uid){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['buyer_already'],'parse_mode'=>'HTML']);return;}
-save_state($info['chat_id'],$st);
-refresh_admin_paid_message($info['chat_id'],$st);
-save_uctx($uid,['chat_id'=>$info['chat_id'],'role'=>'buyer','token'=>$st['token']??'']);
-api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['buyer_start'],'parse_mode'=>'HTML']);
-return;
-}else{
-if(($st['seller_id']??0)===0){$st['seller_id']=$uid;$st['seller_username']=$un??'';}elseif($st['seller_id']!=$uid){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['seller_already'],'parse_mode'=>'HTML']);return;}
-save_state($info['chat_id'],$st);
-refresh_admin_paid_message($info['chat_id'],$st);
-save_uctx($uid,['chat_id'=>$info['chat_id'],'role'=>'seller','need'=>'email','token'=>$st['token']??'']);
-api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['seller_start'],'parse_mode'=>'HTML']);
-return;
-}
+        if($info['role']==='buyer'){
+            if(is_whitelisted_user($uid)){
+                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['whitelisted_user_rejected']??'<b>دسترسی مجاز نیست</b>','parse_mode'=>'HTML']);
+                return;
+            }
+            if(($st['buyer_id']??0)===0){$st['buyer_id']=$uid;$st['buyer_username']=$un??'';}elseif($st['buyer_id']!=$uid){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['buyer_already'],'parse_mode'=>'HTML']);return;}
+            save_state($info['chat_id'],$st);
+            refresh_admin_paid_message($info['chat_id'],$st);
+            save_uctx($uid,['chat_id'=>$info['chat_id'],'role'=>'buyer','token'=>$st['token']??'']);
+            api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['buyer_start'],'parse_mode'=>'HTML']);
+            return;
+        }else{
+            if(is_whitelisted_user($uid)){
+                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['whitelisted_user_rejected']??'<b>دسترسی مجاز نیست</b>','parse_mode'=>'HTML']);
+                return;
+            }
+            if(($st['seller_id']??0)===0){$st['seller_id']=$uid;$st['seller_username']=$un??'';}elseif($st['seller_id']!=$uid){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['seller_already'],'parse_mode'=>'HTML']);return;}
+            save_state($info['chat_id'],$st);
+            refresh_admin_paid_message($info['chat_id'],$st);
+            save_uctx($uid,['chat_id'=>$info['chat_id'],'role'=>'seller','need'=>'email','token'=>$st['token']??'']);
+            api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['seller_start'],'parse_mode'=>'HTML']);
+            return;
+        }
 }
 api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['invalid_link'],'parse_mode'=>'HTML']);
 return;
