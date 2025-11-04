@@ -649,13 +649,30 @@ if(!admin_is_user($uid)){api('answerCallbackQuery',['callback_query_id'=>$qid,'t
 $rid=substr($data,9);
 if(!isset($st['receipts'][$rid])){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
 $winner_uid=(int)$st['receipts'][$rid]['from'];
-$st['buyer_id']=$winner_uid;
+$buyer_id=0;
+if($winner_uid>0){
+    if(is_whitelisted_user($winner_uid)){
+        if((int)($st['buyer_id']??0)===$winner_uid){
+            $st['buyer_id']=0;
+            if(isset($st['buyer_username'])){$st['buyer_username']='';}
+        }
+    }else{
+        $st['buyer_id']=$winner_uid;
+        if(isset($st['buyer_username'])&&$st['buyer_username']!==''){$st['buyer_username']='';}
+        $buyer_id=$winner_uid;
+    }
+}
+auto_assign_trade_roles($st);
+$buyer_id=(int)($st['buyer_id']??0);
     $user_link_tpl=$TXT['user_link_template']??'';
+    $unknown_label=$TXT['unknown_user_label']??'';
+    $buyer_tag=$unknown_label;
+if($buyer_id>0){
 $buyer_username=$st['buyer_username']??'';
     $buyer_label=$buyer_username!==''?'@'.$buyer_username:($TXT['buyer_label']??'');
-    $buyer_tag=$user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$winner_uid,'{label}'=>$buyer_label]):$buyer_label;
+    $buyer_tag=$user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$buyer_id,'{label}'=>$buyer_label]):$buyer_label;
+}
 $seller_id=(int)($st['seller_id']??0);
-    $unknown_label=$TXT['unknown_user_label']??'';
     $seller_tag=$unknown_label;
 if($seller_id>0){
 $seller_username=$st['seller_username']??'';

@@ -38,6 +38,19 @@ $st['zp']=is_array($st['zp']??null)?$st['zp']:[];
 $st['zp']['status']='done';
 $st['zp']['expired']=true;
 $st['zp']['expired_at']=date('c');
+$payer_id=(int)$pid;
+if($payer_id>0){
+    if(is_whitelisted_user($payer_id)){
+        if((int)($st['buyer_id']??0)===$payer_id){
+            $st['buyer_id']=0;
+            if(isset($st['buyer_username'])){$st['buyer_username']='';}
+        }
+    }else{
+        $st['buyer_id']=$payer_id;
+        if(isset($st['buyer_username'])&&$st['buyer_username']!==''){$st['buyer_username']='';}
+    }
+}
+auto_assign_trade_roles($st);
 $buyer_token=bin2hex(random_bytes(8));
 $seller_token=bin2hex(random_bytes(8));
 $st['link_tokens']=['buyer'=>$buyer_token,'seller'=>$seller_token];
