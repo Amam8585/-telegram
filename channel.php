@@ -20,6 +20,96 @@ if (!defined('CHANNEL_FORCE_RECHECK_CALLBACK')) {
     define('CHANNEL_FORCE_RECHECK_CALLBACK', 'channel_recheck');
 }
 
+function channel_force_chat_username()
+{
+    $link = CHANNEL_FORCE_CHAT_LINK;
+    if (!is_string($link) || $link === '') {
+        return null;
+    }
+
+    $parts = @parse_url($link);
+    if (!is_array($parts)) {
+        return null;
+    }
+
+    $host = strtolower($parts['host'] ?? '');
+    $valid_hosts = ['t.me', 'telegram.me', 'telegram.dog'];
+    if (!in_array($host, $valid_hosts, true)) {
+        return null;
+    }
+
+    $path = trim($parts['path'] ?? '', '/');
+    if ($path === '') {
+        return null;
+    }
+
+    if ($path[0] === '+') {
+        return null;
+    }
+
+    if (stripos($path, 'joinchat/') === 0) {
+        return null;
+    }
+
+    $segments = explode('/', $path, 2);
+    $username = $segments[0] ?? '';
+    if ($username === '') {
+        return null;
+    }
+
+    if ($username[0] === '@') {
+        return $username;
+    }
+
+    return '@' . $username;
+}
+
+function channel_force_chat_identifiers()
+{
+    $identifiers = [];
+    $chat_id = CHANNEL_FORCE_CHAT_ID;
+    if ($chat_id !== null && $chat_id !== '') {
+        $identifiers[] = (string) $chat_id;
+    }
+
+    $username = channel_force_chat_username();
+    if ($username !== null) {
+        $identifiers[] = $username;
+    }
+
+    return array_values(array_unique($identifiers));
+}
+
+function channel_debug_log($message, array $context = [])
+{
+    if (!function_exists('ensure_dir') || !function_exists('data_dir')) {
+        return;
+    }
+
+    try {
+        ensure_dir();
+        $entry = [
+            'time' => date('c'),
+            'message' => (string) $message,
+        ];
+        if (!empty($context)) {
+            $entry['context'] = $context;
+        }
+        $encoded = json_encode($entry, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($encoded === false) {
+            $encoded = json_encode([
+                'time' => date('c'),
+                'message' => 'Failed to encode log entry',
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+        if ($encoded !== false) {
+            file_put_contents(data_dir() . '/channel_debug.log', $encoded . PHP_EOL, FILE_APPEND | LOCK_EX);
+        }
+    } catch (Throwable $e) {
+        // Ignore logging failures.
+    }
+}
+
 function channel_force_join_message_text(array $context = [])
 {
     global $TXT;
@@ -117,24 +207,83 @@ function channel_is_user_member($user_id, $refresh = false)
         $cache[$key] = null;
         return null;
     }
-    $response = api('getChatMember', [
-        'chat_id' => CHANNEL_FORCE_CHAT_ID,
-        'user_id' => $user_id,
-    ]);
-    if (!is_array($response) || !($response['ok'] ?? false)) {
+    $identifiers = channel_force_chat_identifiers();
+    if (empty($identifiers)) {
+        channel_debug_log('No channel identifiers configured for membership check', [
+            'user_id' => $user_id,
+        ]);
         $cache[$key] = null;
         return null;
     }
-    $member = $response['result'] ?? [];
-    $status = $member['status'] ?? '';
-    $is_member = false;
-    if (in_array($status, ['creator', 'administrator', 'member'], true)) {
-        $is_member = true;
-    } elseif ($status === 'restricted') {
-        $is_member = array_key_exists('is_member', $member) ? (bool) $member['is_member'] : true;
+
+    $errors = [];
+    foreach ($identifiers as $chat_identifier) {
+        $payload = [
+            'chat_id' => $chat_identifier,
+            'user_id' => $user_id,
+        ];
+        $response = api('getChatMember', $payload);
+        if (!is_array($response)) {
+            $errors[] = [
+                'chat_id' => $chat_identifier,
+                'reason' => 'non_array_response',
+            ];
+            continue;
+        }
+
+        if (!($response['ok'] ?? false)) {
+            $errors[] = [
+                'chat_id' => $chat_identifier,
+                'error_code' => $response['error_code'] ?? null,
+                'description' => $response['description'] ?? 'unknown error',
+            ];
+            continue;
+        }
+
+        $member = $response['result'] ?? [];
+        $status = (string) ($member['status'] ?? '');
+        $is_member = false;
+        $determined = true;
+        if (in_array($status, ['creator', 'administrator', 'member'], true)) {
+            $is_member = true;
+        } elseif ($status === 'restricted') {
+            $is_member = array_key_exists('is_member', $member) ? (bool) $member['is_member'] : true;
+        } elseif ($status === 'left' || $status === 'kicked') {
+            $is_member = false;
+        } else {
+            $determined = false;
+        }
+
+        if (!$determined) {
+            channel_debug_log('Unexpected chat member status', [
+                'user_id' => $user_id,
+                'chat_id' => $chat_identifier,
+                'status' => $status,
+                'response' => $response,
+            ]);
+            $cache[$key] = null;
+            return null;
+        }
+
+        $cache[$key] = $is_member;
+        channel_debug_log('Membership check completed', [
+            'user_id' => $user_id,
+            'chat_id' => $chat_identifier,
+            'status' => $status,
+            'is_member' => $is_member,
+        ]);
+        return $is_member;
     }
-    $cache[$key] = $is_member;
-    return $is_member;
+
+    if (!empty($errors)) {
+        channel_debug_log('Membership check API errors', [
+            'user_id' => $user_id,
+            'errors' => $errors,
+        ]);
+    }
+
+    $cache[$key] = null;
+    return null;
 }
 
 /**
