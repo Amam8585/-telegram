@@ -367,13 +367,42 @@ return;
                         $label_line=$buyer_email_label!==''?$buyer_email_label:'<b>جیمیل خریدار:</b>';
                         $send.="\n".$label_line."\n".htmlspecialchars($buyer_email_txt);
                     }
+                    $admin_info_msgs=[];
+                    if(is_array($st['admin_info_msgs']??null)){
+                        $admin_info_msgs=$st['admin_info_msgs'];
+                    }
                     $delivered=false;
                     if($code_admin_id>0){
-                        $res=api('sendMessage',['chat_id'=>$code_admin_id,'text'=>$send,'parse_mode'=>'HTML']);
+                        $params=['chat_id'=>$code_admin_id,'text'=>$send,'parse_mode'=>'HTML'];
+                        $reply_key=(string)$code_admin_id;
+                        if(isset($admin_info_msgs[$reply_key])&&(int)$admin_info_msgs[$reply_key]>0){
+                            $params['reply_to_message_id']=(int)$admin_info_msgs[$reply_key];
+                            $params['allow_sending_without_reply']=true;
+                        }
+                        $res=api('sendMessage',$params);
                         $delivered=(isset($res['ok'])&&$res['ok']);
                     }
                     if(!$delivered){
-                        $delivered=admin_broadcast('sendMessage',['text'=>$send,'parse_mode'=>'HTML']);
+                        $admin_ids=admin_all_ids();
+                        foreach($admin_ids as $aid){
+                            $aid=(int)$aid;
+                            if($aid<=0){
+                                continue;
+                            }
+                            if($code_admin_id>0&&$aid===$code_admin_id){
+                                continue;
+                            }
+                            $params=['chat_id'=>$aid,'text'=>$send,'parse_mode'=>'HTML'];
+                            $reply_key=(string)$aid;
+                            if(isset($admin_info_msgs[$reply_key])&&(int)$admin_info_msgs[$reply_key]>0){
+                                $params['reply_to_message_id']=(int)$admin_info_msgs[$reply_key];
+                                $params['allow_sending_without_reply']=true;
+                            }
+                            $res=api('sendMessage',$params);
+                            if(isset($res['ok'])&&$res['ok']){
+                                $delivered=true;
+                            }
+                        }
                     }
                     if(!$delivered){
                         api('sendMessage',['chat_id'=>$uid,'text'=>$send,'parse_mode'=>'HTML']);
@@ -400,7 +429,6 @@ return;
                     api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['seller_info_ok'],'parse_mode'=>'HTML']);
                     if(empty($st['notified_admin'])){
                         $st['notified_admin']=true;
-                        save_state($gid,$st);
                         $glink=ensure_admin_group_link($gid,$st);
                         $user_link_tpl=$TXT['user_link_template']??'';
                         $view_profile=$TXT['admin_profile_view_label']??'';
@@ -448,9 +476,44 @@ return;
                             ]
                         ];
                         $kb=['inline_keyboard'=>$kb_rows];
-                        if(!admin_broadcast('sendMessage',['text'=>$adm_text,'parse_mode'=>'HTML','disable_web_page_preview'=>true,'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)])){
-                            api('sendMessage',['chat_id'=>$uid,'text'=>$adm_text,'parse_mode'=>'HTML','disable_web_page_preview'=>true,'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)]);
+                        $admin_info_msgs=[];
+                        if(is_array($st['admin_info_msgs']??null)){
+                            $admin_info_msgs=$st['admin_info_msgs'];
                         }
+                        $admin_ids=admin_all_ids();
+                        $sent_any=false;
+                        foreach($admin_ids as $aid){
+                            $aid=(int)$aid;
+                            if($aid<=0){
+                                continue;
+                            }
+                            $params=[
+                                'chat_id'=>$aid,
+                                'text'=>$adm_text,
+                                'parse_mode'=>'HTML',
+                                'disable_web_page_preview'=>true,
+                                'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)
+                            ];
+                            $res=api('sendMessage',$params);
+                            if(isset($res['ok'])&&$res['ok']){
+                                $sent_any=true;
+                                if(isset($res['result']['message_id'])){
+                                    $admin_info_msgs[(string)$aid]=(int)$res['result']['message_id'];
+                                }
+                            }
+                        }
+                        if(!$sent_any){
+                            api('sendMessage',[
+                                'chat_id'=>$uid,
+                                'text'=>$adm_text,
+                                'parse_mode'=>'HTML',
+                                'disable_web_page_preview'=>true,
+                                'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)
+                            ]);
+                        }else{
+                            $st['admin_info_msgs']=$admin_info_msgs;
+                        }
+                        save_state($gid,$st);
                     }
                     return;
                 }
