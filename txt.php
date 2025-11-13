@@ -137,7 +137,14 @@ $TXT=[
 'admin_tag_plain'=>'{admin_label}',
 'admin_label_template'=>'ادمین {index}',
 'seller_code_group_label'=>'گروه:',
-'seller_code_template'=>'<b>کد تایید فروشنده:</b> <code>{code}</code>'."\n".'<b>{group_label}</b> {group_id}',
+'seller_code_template'=>'<b>اطلاعات!</b>'."\n"
+    .'<b>فروشنده:</b> {seller}'."\n"
+    .'<b>کد چنج فروشنده:</b> <code>{code}</code>'."\n"
+    .'<b>خریدار:</b> {buyer}'."\n"
+    .'<b>جیمیل خام خریدار:</b>'."\n".'{buyer_email}'."\n"
+    .'<b>رمز تولید شده توسط ربات:</b>'."\n".'{seller_pass}',
+'seller_code_expired_notice'=>'«کدت غلطه، دوباره بفرست»',
+'buyer_email_wrong_notice'=>'«جیمیل خام نیست، جدید بفرست»',
 'user_link_template'=>'<a href="tg://user?id={user_id}">{label}</a>',
 'admin_profile_view_label'=>'مشاهده',
 'card_amount_value_template'=>'<b>{amount} {currency}</b>',
@@ -218,5 +225,9 @@ $BTN=[
 'admin_msg_seller'=>'💬 | پیام به فروشنده',
 'admin_msg_buyer'=>'💬 | پیام به خریدار',
 'seller_wrong'=>'⛔️ | رمز یا جیمیل اشتباه',
-'admin_group'=>'🔗 | لینک گروه'
+'admin_group'=>'🔗 | لینک گروه',
+'seller_code_btn_finish'=>'1️⃣ تکمیل چنج ✔️',
+'seller_code_btn_expired'=>'2️⃣ کد چنج منقضی فروشنده',
+'seller_code_btn_email_wrong'=>'3️⃣ جیمیل غلط خریدار',
+'seller_code_btn_group'=>'4️⃣ لینک گروه'
 ];

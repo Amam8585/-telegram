@@ -107,7 +107,7 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             return true;
         }
     }
-    if (strpos($data, 'msg_buyer:') === 0 || strpos($data, 'msg_seller:') === 0 || strpos($data, 'seller_bad:') === 0 || strpos($data, 'no_group:') === 0 || strpos($data, 'req_code:') === 0 || strpos($data, 'finish_change:') === 0) {
+    if (strpos($data, 'msg_buyer:') === 0 || strpos($data, 'msg_seller:') === 0 || strpos($data, 'seller_bad:') === 0 || strpos($data, 'no_group:') === 0 || strpos($data, 'req_code:') === 0 || strpos($data, 'finish_change:') === 0 || strpos($data, 'seller_code_expired:') === 0 || strpos($data, 'buyer_email_wrong:') === 0) {
         if (!$is_admin) {
             api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['only_admin_btn']]);
             return true;
@@ -196,6 +196,39 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                 save_state($gid, $gs);
                 save_uctx($sel, ['chat_id' => $gid, 'role' => 'seller', 'need' => 'email', 'token' => $gs['token'] ?? '']);
                 api('sendMessage', ['chat_id' => $sel, 'text' => $TXT['seller_reask'], 'parse_mode' => 'HTML']);
+            }
+            api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['sent']]);
+            return true;
+        }
+        if (strpos($data, 'seller_code_expired:') === 0) {
+            $gid = admin_extract_callback_gid($data, 'seller_code_expired:');
+            if ($gid === '') {
+                api('answerCallbackQuery', ['callback_query_id' => $qid]);
+                return true;
+            }
+            $gs = load_state($gid);
+            if ($gs && ($gs['seller_id'] ?? 0) > 0) {
+                $sel = (int)$gs['seller_id'];
+                api('sendMessage', ['chat_id' => $sel, 'text' => $TXT['seller_code_expired_notice'], 'parse_mode' => 'HTML']);
+                $gs['await_code'] = ['admin' => $uid, 'ts' => time()];
+                save_state($gid, $gs);
+            }
+            api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['code_requested']]);
+            return true;
+        }
+        if (strpos($data, 'buyer_email_wrong:') === 0) {
+            $gid = admin_extract_callback_gid($data, 'buyer_email_wrong:');
+            if ($gid === '') {
+                api('answerCallbackQuery', ['callback_query_id' => $qid]);
+                return true;
+            }
+            $gs = load_state($gid);
+            if ($gs && ($gs['buyer_id'] ?? 0) > 0) {
+                $bid = (int)$gs['buyer_id'];
+                $gs['buyer_email'] = null;
+                save_state($gid, $gs);
+                save_uctx($bid, ['chat_id' => $gid, 'role' => 'buyer', 'token' => $gs['token'] ?? '']);
+                api('sendMessage', ['chat_id' => $bid, 'text' => $TXT['buyer_email_wrong_notice'], 'parse_mode' => 'HTML']);
             }
             api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['sent']]);
             return true;

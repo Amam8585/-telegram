@@ -356,24 +356,65 @@ return;
                     }
                     $group_label=$TXT['seller_code_group_label']??'Group:';
                     $code_tpl=$TXT['seller_code_template']??'';
+                    $glink=ensure_admin_group_link($gid,$st);
+                    $user_link_tpl=$TXT['user_link_template']??'';
+                    $view_profile=$TXT['admin_profile_view_label']??'';
+                    $missing_html=$TXT['admin_info_missing_value']??'<b>نامشخص</b>';
+                    $seller_id=(int)($st['seller_id']??0);
+                    $seller_username=$st['seller_username']??'';
+                    $seller_link_label=$seller_username!==''?'@'.$seller_username:$view_profile;
+                    $seller_tag=$seller_id>0
+                        ? ($user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$seller_id,'{label}'=>$seller_link_label]):$seller_link_label)
+                        : $missing_html;
+                    $buyer_id=(int)($st['buyer_id']??0);
+                    $buyer_username=$st['buyer_username']??'';
+                    $buyer_link_label=$buyer_username!==''?'@'.$buyer_username:$view_profile;
+                    $buyer_tag=$buyer_id>0
+                        ? ($user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$buyer_id,'{label}'=>$buyer_link_label]):$buyer_link_label)
+                        : $missing_html;
+                    $buyer_email_txt=trim((string)($st['buyer_email']??''));
+                    $buyer_email_html=$buyer_email_txt!==''?'<code>'.htmlspecialchars($buyer_email_txt).'</code>':$missing_html;
+                    $seller_pass_txt=$st['seller_pass']??'';
+                    $seller_pass_html=$seller_pass_txt!==''?'<code>'.htmlspecialchars($seller_pass_txt).'</code>':$missing_html;
                     $send=strtr($code_tpl,[
                         '{code}'=>htmlspecialchars($txt),
                         '{group_id}'=>$gid,
                         '{group_label}'=>$group_label,
+                        '{seller}'=>$seller_tag,
+                        '{buyer}'=>$buyer_tag,
+                        '{buyer_email}'=>$buyer_email_html,
+                        '{seller_pass}'=>$seller_pass_html,
                     ]);
-                    $buyer_email_label=$TXT['admin_info_buyer_email']??'';
-                    $buyer_email_txt=trim((string)($st['buyer_email']??''));
-                    if($buyer_email_txt!==''){
-                        $label_line=$buyer_email_label!==''?$buyer_email_label:'<b>جیمیل خریدار:</b>';
-                        $send.="\n".$label_line."\n".htmlspecialchars($buyer_email_txt);
-                    }
+                    $code_kb=[
+                        [
+                            ['text'=>$BTN['seller_code_btn_finish']??'تکمیل چنج ✔️','callback_data'=>'finish_change:'.$gid]
+                        ],
+                        [
+                            ['text'=>$BTN['seller_code_btn_expired']??'کد چنج منقضی فروشنده','callback_data'=>'seller_code_expired:'.$gid]
+                        ],
+                        [
+                            ['text'=>$BTN['seller_code_btn_email_wrong']??'جیمیل غلط خریدار','callback_data'=>'buyer_email_wrong:'.$gid]
+                        ],
+                        [
+                            $glink!==''
+                                ? ['text'=>$BTN['seller_code_btn_group']??'لینک گروه','url'=>$glink]
+                                : ['text'=>$BTN['seller_code_btn_group']??'لینک گروه','callback_data'=>'no_group:'.$gid]
+                        ]
+                    ];
+                    $reply_markup=json_encode(['inline_keyboard'=>$code_kb],JSON_UNESCAPED_UNICODE);
                     $admin_info_msgs=[];
                     if(is_array($st['admin_info_msgs']??null)){
                         $admin_info_msgs=$st['admin_info_msgs'];
                     }
                     $delivered=false;
                     if($code_admin_id>0){
-                        $params=['chat_id'=>$code_admin_id,'text'=>$send,'parse_mode'=>'HTML'];
+                        $params=[
+                            'chat_id'=>$code_admin_id,
+                            'text'=>$send,
+                            'parse_mode'=>'HTML',
+                            'disable_web_page_preview'=>true,
+                            'reply_markup'=>$reply_markup
+                        ];
                         $reply_key=(string)$code_admin_id;
                         if(isset($admin_info_msgs[$reply_key])&&(int)$admin_info_msgs[$reply_key]>0){
                             $params['reply_to_message_id']=(int)$admin_info_msgs[$reply_key];
@@ -392,7 +433,13 @@ return;
                             if($code_admin_id>0&&$aid===$code_admin_id){
                                 continue;
                             }
-                            $params=['chat_id'=>$aid,'text'=>$send,'parse_mode'=>'HTML'];
+                            $params=[
+                                'chat_id'=>$aid,
+                                'text'=>$send,
+                                'parse_mode'=>'HTML',
+                                'disable_web_page_preview'=>true,
+                                'reply_markup'=>$reply_markup
+                            ];
                             $reply_key=(string)$aid;
                             if(isset($admin_info_msgs[$reply_key])&&(int)$admin_info_msgs[$reply_key]>0){
                                 $params['reply_to_message_id']=(int)$admin_info_msgs[$reply_key];
