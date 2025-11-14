@@ -142,7 +142,18 @@ $TXT=[
     .'<b>کد چنج فروشنده:</b> <code>{code}</code>'."\n"
     .'<b>خریدار:</b> {buyer}'."\n"
     .'<b>جیمیل خام خریدار:</b>'."\n".'{buyer_email}'."\n"
-    .'<b>رمز تولید شده توسط ربات:</b>'."\n".'{seller_pass}',
+    .'<b>رمز تولید شده توسط ربات:</b>'."\n".'{seller_pass}'."\n"
+    .'⸻'."\n"
+    .'<b>🎛 دکمه‌ها و عملکرد دقیق</b>'."\n"
+    .'⸻',
+'log_command_text'=>'/log',
+'log_instruction_text'=>'{seller} عزیز، «به روش بالا لاگ را ارسال کنید.»',
+'log_media_request'=>'<b>لطفاً ویدیو یا عکس لاگ را در گروه معامله ارسال کنید.</b>',
+'log_buyer_prompt'=>'{buyer} عزیز، لطفاً لاگ ارسال‌شده و تحویل گرفتن اکانت را بررسی کنید.'."\n".'اگر هر دو مورد صحیح است، دکمه زیر را بزنید:',
+'log_only_buyer'=>'فقط خریدار می‌تواند این دکمه را بزند.',
+'log_confirm_ack'=>'ثبت شد',
+'log_confirmed_seller_line'=>'• {seller} → «شماره کارت را ارسال کنید.»',
+'log_confirmed_admin_line'=>'• {admins} → «مراحل چنج تایید شد؛ جهت واریز یا ادامه معامله اقدام کنید.»',
 'seller_code_expired_notice'=>'«کدت غلطه، دوباره بفرست»',
 'buyer_email_wrong_notice'=>'«جیمیل خام نیست، جدید بفرست»',
 'user_link_template'=>'<a href="tg://user?id={user_id}">{label}</a>',
@@ -229,5 +240,6 @@ $BTN=[
 'seller_code_btn_finish'=>'1️⃣ تکمیل چنج ✔️',
 'seller_code_btn_expired'=>'2️⃣ کد چنج منقضی فروشنده',
 'seller_code_btn_email_wrong'=>'3️⃣ جیمیل غلط خریدار',
-'seller_code_btn_group'=>'4️⃣ لینک گروه'
+'seller_code_btn_group'=>'4️⃣ لینک گروه',
+'log_confirm_btn'=>'✔️ تایید شد'
 ];

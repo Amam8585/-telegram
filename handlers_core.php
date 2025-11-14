@@ -202,6 +202,48 @@ $st['phase']='await_admin_confirm';
 save_state($cid,$st);
 return;
 }
+    if($st&&($st['phase']??'')==='await_seller_log'){
+        $seller_id=(int)($st['seller_id']??0);
+        if($seller_id>0&&$uid===$seller_id){
+            $has_media=false;
+            if(isset($m['photo'])&&is_array($m['photo'])){$has_media=true;}
+            if(isset($m['video'])){$has_media=true;}
+            if(isset($m['document'])){$has_media=true;}
+            if($has_media){
+                $buyer_id=(int)($st['buyer_id']??0);
+                $user_link_tpl=$TXT['user_link_template']??'';
+                $missing_html=$TXT['admin_info_missing_value']??'<b>نامشخص</b>';
+                $buyer_tag=$missing_html;
+                if($buyer_id>0){
+                    $buyer_username=$st['buyer_username']??'';
+                    $buyer_label=$buyer_username!==''?'@'.$buyer_username:($TXT['buyer_label']??'');
+                    $buyer_tag=$user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$buyer_id,'{label}'=>$buyer_label]):$buyer_label;
+                }
+                $prompt_tpl=$TXT['log_buyer_prompt']??'';
+                $prompt_text=$prompt_tpl!==''?strtr($prompt_tpl,['{buyer}'=>$buyer_tag]):$buyer_tag;
+                $kb=['inline_keyboard'=>[[['text'=>$BTN['log_confirm_btn']??'✔️ تایید شد','callback_data'=>'log_confirm:'.$cid]]]];
+                $params=[
+                    'chat_id'=>$cid,
+                    'text'=>$prompt_text,
+                    'parse_mode'=>'HTML',
+                    'reply_to_message_id'=>$m['message_id']??null,
+                    'allow_sending_without_reply'=>true,
+                    'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)
+                ];
+                $res=api('sendMessage',$params);
+                $st['phase']='await_buyer_confirm';
+                $st['await_log']=[
+                    'seller_id'=>$seller_id,
+                    'buyer_id'=>$buyer_id,
+                    'seller_message_id'=>$m['message_id']??0,
+                    'prompt_message_id'=>$res['result']['message_id']??0
+                ];
+                save_state($cid,$st);
+                return;
+            }
+        }
+    }
+}
 }
 function refresh_admin_paid_message($chat_id,$st){
 global $TXT;
@@ -374,6 +416,10 @@ return;
                         : $missing_html;
                     $buyer_email_txt=trim((string)($st['buyer_email']??''));
                     $buyer_email_html=$buyer_email_txt!==''?'<code>'.htmlspecialchars($buyer_email_txt).'</code>':$missing_html;
+                    if(($st['seller_pass']??'')===''){
+                        $st['seller_pass']=generate_trade_password();
+                        save_state($gid,$st);
+                    }
                     $seller_pass_txt=$st['seller_pass']??'';
                     $seller_pass_html=$seller_pass_txt!==''?'<code>'.htmlspecialchars($seller_pass_txt).'</code>':$missing_html;
                     $send=strtr($code_tpl,[
@@ -470,7 +516,8 @@ return;
                 }
                 if($need==='pass'){
                     if(!is_valid_act_pass($txt)){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['pass_invalid'],'parse_mode'=>'HTML']);return;}
-                    $st['seller_pass']=$txt;
+                    $st['seller_input_pass']=$txt;
+                    $st['seller_pass']=generate_trade_password();
                     save_state($gid,$st);
                     save_uctx($uid,['chat_id'=>$gid,'role'=>'seller','need'=>'done','token'=>$st['token']??'']);
                     api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['seller_info_ok'],'parse_mode'=>'HTML']);
@@ -495,6 +542,10 @@ return;
                             : $missing_html;
                         $seller_email_txt=trim($st['seller_email']??'');
                         $seller_email_html=$seller_email_txt!==''?htmlspecialchars($seller_email_txt):$missing_html;
+                        if(($st['seller_pass']??'')===''){
+                            $st['seller_pass']=generate_trade_password();
+                            save_state($gid,$st);
+                        }
                         $seller_pass_txt=$st['seller_pass']??'';
                         $seller_pass_html=$seller_pass_txt!==''?htmlspecialchars($seller_pass_txt):$missing_html;
                         $buyer_email_txt=trim($st['buyer_email']??'');
@@ -595,7 +646,6 @@ save_state($cid,$st);
 $msg=api('sendMessage',['chat_id'=>$cid,'text'=>invoice_text($st),'parse_mode'=>'HTML','reply_markup'=>json_encode(invoice_kb($st,$uid,false),JSON_UNESCAPED_UNICODE)]);
 api('pinChatMessage',['chat_id'=>$cid,'message_id'=>$msg['result']['message_id']??null,'disable_notification'=>true]);
 return;
-}
 }
 }
 function handle_cb($cb){
@@ -824,6 +874,63 @@ $st['admin_paid_msg_id']=(int)($res['result']['message_id']??0);
 save_state($cid,$st);
 api('answerCallbackQuery',['callback_query_id'=>$qid]);
 return;
+}
+if(strpos($data,'log_confirm:')===0){
+    if(($st['phase']??'')!=='await_buyer_confirm'){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
+    $target_gid=(int)substr($data,12);
+    if($target_gid!==0&&$target_gid!=$cid){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
+    $buyer_id=(int)($st['buyer_id']??0);
+    if($buyer_id<=0||$uid!==$buyer_id){
+        $warn=$TXT['log_only_buyer']??'';
+        if($warn!==''){
+            api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$warn,'show_alert'=>true]);
+        }else{
+            api('answerCallbackQuery',['callback_query_id'=>$qid]);
+        }
+        return;
+    }
+    $await_log=is_array($st['await_log']??null)?$st['await_log']:[];
+    $prompt_mid=(int)($await_log['prompt_message_id']??0);
+    if($prompt_mid>0){
+        api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$prompt_mid,'reply_markup'=>json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE)]);
+    }
+    $seller_id=(int)($st['seller_id']??0);
+    $user_link_tpl=$TXT['user_link_template']??'';
+    $missing_html=$TXT['admin_info_missing_value']??'<b>نامشخص</b>';
+    $seller_tag=$missing_html;
+    if($seller_id>0){
+        $seller_username=$st['seller_username']??'';
+        $seller_label=$seller_username!==''?'@'.$seller_username:($TXT['seller_label']??'');
+        $seller_tag=$user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$seller_id,'{label}'=>$seller_label]):$seller_label;
+    }
+    $admin_tag=admin_mentions_text($TXT);
+    $lines=[];
+    $seller_line_tpl=$TXT['log_confirmed_seller_line']??'';
+    if($seller_line_tpl!==''){
+        $lines[]=strtr($seller_line_tpl,['{seller}'=>$seller_tag]);
+    }elseif($seller_tag!==''){
+        $lines[]='• '.$seller_tag.' → «شماره کارت را ارسال کنید.»';
+    }
+    $admin_line_tpl=$TXT['log_confirmed_admin_line']??'';
+    if($admin_line_tpl!==''){
+        $lines[]=strtr($admin_line_tpl,['{admins}'=>$admin_tag]);
+    }elseif($admin_tag!==''){
+        $lines[]='• '.$admin_tag.' → «مراحل چنج تایید شد؛ جهت واریز یا ادامه معامله اقدام کنید.»';
+    }
+    $final_text=trim(implode("\n",array_filter($lines)));
+    if($final_text!==''){
+        api('sendMessage',['chat_id'=>$cid,'text'=>$final_text,'parse_mode'=>'HTML','disable_web_page_preview'=>true]);
+    }
+    $st['phase']='post_change';
+    $st['await_log']=null;
+    save_state($cid,$st);
+    $ack=$TXT['log_confirm_ack']??($TXT['sent']??'');
+    if($ack!==''){
+        api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$ack]);
+    }else{
+        api('answerCallbackQuery',['callback_query_id'=>$qid]);
+    }
+    return;
 }
 api('answerCallbackQuery',['callback_query_id'=>$qid]);
 }
