@@ -151,7 +151,7 @@ function resolve_plan_user_context($uid,$st,$chat_id,$ux_override=null){
         'context'=>null,
     ];
     $ux=$ux_override;
-    if($ux===null){$ux=load_uctx($uid);}
+    if($ux===null){$ux=load_uctx($uid);}    
     if(!$ux){return $result;}
     $result['context']=$ux;
     if((string)($ux['chat_id']??'')!==(string)$chat_id){return $result;}
@@ -174,6 +174,74 @@ function resolve_plan_user_context($uid,$st,$chat_id,$ux_override=null){
         $result['role']=$ux_role;
     }
     return $result;
+}
+
+function refresh_admin_paid_message($chat_id,$st){
+    global $TXT;
+    $mid=(int)($st['admin_paid_msg_id']??0);
+    if($mid<=0){
+        return;
+    }
+    $tpl=$TXT['admin_paid_msg']??'';
+    if($tpl===''){
+        return;
+    }
+    $link_tokens=$st['link_tokens']??null;
+    if(!is_array($link_tokens)){
+        return;
+    }
+    $buyer_token=$link_tokens['buyer']??'';
+    $seller_token=$link_tokens['seller']??'';
+    if($buyer_token===''||$seller_token===''){
+        return;
+    }
+    $user_link_tpl=$TXT['user_link_template']??'';
+    $unknown_label=$TXT['unknown_user_label']??'';
+    $buyer_tag=$unknown_label;
+    $buyer_id=(int)($st['buyer_id']??0);
+    if($buyer_id>0){
+        $buyer_username=$st['buyer_username']??'';
+        $buyer_label=$buyer_username!==''?'@'.$buyer_username:($TXT['buyer_label']??'');
+        if($buyer_label===''){
+            $buyer_label=$unknown_label;
+        }
+        $buyer_tag=$user_link_tpl!==''
+            ? strtr($user_link_tpl,['{user_id}'=>$buyer_id,'{label}'=>$buyer_label])
+            : $buyer_label;
+    }
+    $seller_tag=$unknown_label;
+    $seller_id=(int)($st['seller_id']??0);
+    if($seller_id>0){
+        $seller_username=$st['seller_username']??'';
+        $seller_label=$seller_username!==''?'@'.$seller_username:($TXT['seller_label']??'');
+        if($seller_label===''){
+            $seller_label=$unknown_label;
+        }
+        $seller_tag=$user_link_tpl!==''
+            ? strtr($user_link_tpl,['{user_id}'=>$seller_id,'{label}'=>$seller_label])
+            : $seller_label;
+    }
+    $botu=$TXT['bot_username']??'';
+    $msg=strtr(
+        $tpl,
+        [
+            '{seller_tag}'=>$seller_tag,
+            '{buyer_tag}'=>$buyer_tag,
+            '{bot_username}'=>$botu,
+            '{buyer_token}'=>$buyer_token,
+            '{seller_token}'=>$seller_token,
+        ]
+    );
+    api(
+        'editMessageText',
+        [
+            'chat_id'=>$chat_id,
+            'message_id'=>$mid,
+            'text'=>$msg,
+            'parse_mode'=>'HTML',
+            'disable_web_page_preview'=>true,
+        ]
+    );
 }
 
 function handle_msg($m){
@@ -277,79 +345,68 @@ return;
             }
         }
     }
-}
-}
-function refresh_admin_paid_message($chat_id,$st){
-global $TXT;
-$mid=(int)($st['admin_paid_msg_id']??0);
-if($mid<=0)return;
-$tpl=$TXT['admin_paid_msg']??'';
-if($tpl==='')return;
-$link_tokens=$st['link_tokens']??null;
-if(!is_array($link_tokens))return;
-$buyer_token=$link_tokens['buyer']??'';
-$seller_token=$link_tokens['seller']??'';
-if($buyer_token===''||$seller_token==='')return;
-$user_link_tpl=$TXT['user_link_template']??'';
-$unknown_label=$TXT['unknown_user_label']??'';
-$buyer_tag=$unknown_label;
-$buyer_id=(int)($st['buyer_id']??0);
-if($buyer_id>0){
-$buyer_username=$st['buyer_username']??'';
-$buyer_label=$buyer_username!==''?'@'.$buyer_username:($TXT['buyer_label']??'');
-if($buyer_label==='')$buyer_label=$unknown_label;
-$buyer_tag=$user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$buyer_id,'{label}'=>$buyer_label]):$buyer_label;
-}
-$seller_tag=$unknown_label;
-$seller_id=(int)($st['seller_id']??0);
-if($seller_id>0){
-$seller_username=$st['seller_username']??'';
-$seller_label=$seller_username!==''?'@'.$seller_username:($TXT['seller_label']??'');
-if($seller_label==='')$seller_label=$unknown_label;
-$seller_tag=$user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$seller_id,'{label}'=>$seller_label]):$seller_label;
-}
-$botu=$TXT['bot_username']??'';
-$msg=strtr($tpl,['{seller_tag}'=>$seller_tag,'{buyer_tag}'=>$buyer_tag,'{bot_username}'=>$botu,'{buyer_token}'=>$buyer_token,'{seller_token}'=>$seller_token]);
-api('editMessageText',['chat_id'=>$chat_id,'message_id'=>$mid,'text'=>$msg,'parse_mode'=>'HTML','disable_web_page_preview'=>true]);
-}
-if($txt&&strpos($txt,'/start')===0&&$ctype==='private'){
-preg_match('/^\/start\s*(.*)$/',$txt,$mm);
-$param=trim($mm[1]??'');
-$info=parse_start($param);
-if(!$info){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['greet'],'parse_mode'=>'HTML']);return;}
-if(($info['kind']??'')==='get'){
-$found=find_chat_by_token($info['token']);
-if(!$found){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['invalid_link'],'parse_mode'=>'HTML']);return;}
-$role=$found['role'];
-$chat_id=$found['chat_id'];
-$st=load_state($chat_id);
-if(!$st){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['invalid_link'],'parse_mode'=>'HTML']);return;}
-$known_role='';
-if((string)($st['buyer_id']??'')===(string)$uid){$known_role='buyer';}
-if((string)($st['seller_id']??'')===(string)$uid){$known_role='seller';}
-$ctx=resolve_plan_user_context($uid,$st,$chat_id);
-if($ctx['role']!==null){$known_role=$ctx['role'];}
-if($known_role==='buyer'&&$role==='seller'){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_wrong_for_buyer'],'parse_mode'=>'HTML']);return;}
-if($known_role==='seller'&&$role==='buyer'){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_wrong_for_seller'],'parse_mode'=>'HTML']);return;}
-if(!isset($st['link_tokens_used'])||!is_array($st['link_tokens_used'])){$st['link_tokens_used']=['buyer'=>null,'seller'=>null];}
-$used_b=$st['link_tokens_used']['buyer'];
-$used_s=$st['link_tokens_used']['seller'];
-if(($role==='buyer'&&$used_b!==null&&$used_b!=$uid)||($role==='seller'&&$used_s!==null&&$used_s!=$uid)){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_used_by_other'],'parse_mode'=>'HTML']);return;}
-if(($role==='buyer'&&$used_s!==null&&$used_s==$uid)||($role==='seller'&&$used_b!==null&&$used_b==$uid)){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_cannot_use_both'],'parse_mode'=>'HTML']);return;}
-        if($role==='buyer'){
-            if(is_whitelisted_user($uid)){
-                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['whitelisted_user_rejected']??'<b>دسترسی مجاز نیست</b>','parse_mode'=>'HTML']);
+    }
+    if($txt&&strpos($txt,'/start')===0&&$ctype==='private'){
+        preg_match('/^\/start\s*(.*)$/',$txt,$mm);
+        $param=trim($mm[1]??'');
+        $info=parse_start($param);
+        if(!$info){
+            api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['greet'],'parse_mode'=>'HTML']);
+            return;
+        }
+        if(($info['kind']??'')==='get'){
+            $found=find_chat_by_token($info['token']);
+            if(!$found){
+                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['invalid_link'],'parse_mode'=>'HTML']);
                 return;
             }
-            $st['link_tokens_used']['buyer']=$uid;
-            $st['buyer_id']=$uid;
-            $st['buyer_username']=$un??'';
-            save_state($chat_id,$st);
-            refresh_admin_paid_message($chat_id,$st);
-            save_uctx($uid,['chat_id'=>$chat_id,'role'=>'buyer','token'=>$st['token']??'']);
-            api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['buyer_start'],'parse_mode'=>'HTML']);
-            return;
-        }else{
+            $role=$found['role'];
+            $chat_id=$found['chat_id'];
+            $st=load_state($chat_id);
+            if(!$st){
+                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['invalid_link'],'parse_mode'=>'HTML']);
+                return;
+            }
+            $known_role='';
+            if((string)($st['buyer_id']??'')===(string)$uid){$known_role='buyer';}
+            if((string)($st['seller_id']??'')===(string)$uid){$known_role='seller';}
+            $ctx=resolve_plan_user_context($uid,$st,$chat_id);
+            if($ctx['role']!==null){$known_role=$ctx['role'];}
+            if($known_role==='buyer'&&$role==='seller'){
+                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_wrong_for_buyer'],'parse_mode'=>'HTML']);
+                return;
+            }
+            if($known_role==='seller'&&$role==='buyer'){
+                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_wrong_for_seller'],'parse_mode'=>'HTML']);
+                return;
+            }
+            if(!isset($st['link_tokens_used'])||!is_array($st['link_tokens_used'])){
+                $st['link_tokens_used']=['buyer'=>null,'seller'=>null];
+            }
+            $used_b=$st['link_tokens_used']['buyer'];
+            $used_s=$st['link_tokens_used']['seller'];
+            if(($role==='buyer'&&$used_b!==null&&$used_b!=$uid)||($role==='seller'&&$used_s!==null&&$used_s!=$uid)){
+                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_used_by_other'],'parse_mode'=>'HTML']);
+                return;
+            }
+            if(($role==='buyer'&&$used_s!==null&&$used_s==$uid)||($role==='seller'&&$used_b!==null&&$used_b==$uid)){
+                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_cannot_use_both'],'parse_mode'=>'HTML']);
+                return;
+            }
+            if($role==='buyer'){
+                if(is_whitelisted_user($uid)){
+                    api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['whitelisted_user_rejected']??'<b>دسترسی مجاز نیست</b>','parse_mode'=>'HTML']);
+                    return;
+                }
+                $st['link_tokens_used']['buyer']=$uid;
+                $st['buyer_id']=$uid;
+                $st['buyer_username']=$un??'';
+                save_state($chat_id,$st);
+                refresh_admin_paid_message($chat_id,$st);
+                save_uctx($uid,['chat_id'=>$chat_id,'role'=>'buyer','token'=>$st['token']??'']);
+                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['buyer_start'],'parse_mode'=>'HTML']);
+                return;
+            }
             if(is_whitelisted_user($uid)){
                 api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['whitelisted_user_rejected']??'<b>دسترسی مجاز نیست</b>','parse_mode'=>'HTML']);
                 return;
@@ -363,44 +420,63 @@ if(($role==='buyer'&&$used_s!==null&&$used_s==$uid)||($role==='seller'&&$used_b!
             api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['seller_start'],'parse_mode'=>'HTML']);
             return;
         }
-}
-if(($info['kind']??'')==='role'){
-$st=load_state($info['chat_id']);
-if(!$st||($st['token']??'')!==$info['token']){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['invalid_link'],'parse_mode'=>'HTML']);return;}
-$known_role='';
-if((string)($st['buyer_id']??'')===(string)$uid){$known_role='buyer';}
-if((string)($st['seller_id']??'')===(string)$uid){$known_role='seller';}
-$ctx=resolve_plan_user_context($uid,$st,$info['chat_id']);
-if($ctx['role']!==null){$known_role=$ctx['role'];}
-if($known_role==='buyer'&&$info['role']==='seller'){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_wrong_for_buyer'],'parse_mode'=>'HTML']);return;}
-if($known_role==='seller'&&$info['role']==='buyer'){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_wrong_for_seller'],'parse_mode'=>'HTML']);return;}
-        if($info['role']==='buyer'){
+        if(($info['kind']??'')==='role'){
+            $st=load_state($info['chat_id']);
+            if(!$st||($st['token']??'')!==$info['token']){
+                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['invalid_link'],'parse_mode'=>'HTML']);
+                return;
+            }
+            $known_role='';
+            if((string)($st['buyer_id']??'')===(string)$uid){$known_role='buyer';}
+            if((string)($st['seller_id']??'')===(string)$uid){$known_role='seller';}
+            $ctx=resolve_plan_user_context($uid,$st,$info['chat_id']);
+            if($ctx['role']!==null){$known_role=$ctx['role'];}
+            if($known_role==='buyer'&&$info['role']==='seller'){
+                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_wrong_for_buyer'],'parse_mode'=>'HTML']);
+                return;
+            }
+            if($known_role==='seller'&&$info['role']==='buyer'){
+                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_wrong_for_seller'],'parse_mode'=>'HTML']);
+                return;
+            }
+            if($info['role']==='buyer'){
+                if(is_whitelisted_user($uid)){
+                    api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['whitelisted_user_rejected']??'<b>دسترسی مجاز نیست</b>','parse_mode'=>'HTML']);
+                    return;
+                }
+                if(($st['buyer_id']??0)===0){
+                    $st['buyer_id']=$uid;
+                    $st['buyer_username']=$un??'';
+                }elseif($st['buyer_id']!=$uid){
+                    api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['buyer_already'],'parse_mode'=>'HTML']);
+                    return;
+                }
+                save_state($info['chat_id'],$st);
+                refresh_admin_paid_message($info['chat_id'],$st);
+                save_uctx($uid,['chat_id'=>$info['chat_id'],'role'=>'buyer','token'=>$st['token']??'']);
+                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['buyer_start'],'parse_mode'=>'HTML']);
+                return;
+            }
             if(is_whitelisted_user($uid)){
                 api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['whitelisted_user_rejected']??'<b>دسترسی مجاز نیست</b>','parse_mode'=>'HTML']);
                 return;
             }
-            if(($st['buyer_id']??0)===0){$st['buyer_id']=$uid;$st['buyer_username']=$un??'';}elseif($st['buyer_id']!=$uid){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['buyer_already'],'parse_mode'=>'HTML']);return;}
-            save_state($info['chat_id'],$st);
-            refresh_admin_paid_message($info['chat_id'],$st);
-            save_uctx($uid,['chat_id'=>$info['chat_id'],'role'=>'buyer','token'=>$st['token']??'']);
-            api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['buyer_start'],'parse_mode'=>'HTML']);
-            return;
-        }else{
-            if(is_whitelisted_user($uid)){
-                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['whitelisted_user_rejected']??'<b>دسترسی مجاز نیست</b>','parse_mode'=>'HTML']);
+            if(($st['seller_id']??0)===0){
+                $st['seller_id']=$uid;
+                $st['seller_username']=$un??'';
+            }elseif($st['seller_id']!=$uid){
+                api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['seller_already'],'parse_mode'=>'HTML']);
                 return;
             }
-            if(($st['seller_id']??0)===0){$st['seller_id']=$uid;$st['seller_username']=$un??'';}elseif($st['seller_id']!=$uid){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['seller_already'],'parse_mode'=>'HTML']);return;}
             save_state($info['chat_id'],$st);
             refresh_admin_paid_message($info['chat_id'],$st);
             save_uctx($uid,['chat_id'=>$info['chat_id'],'role'=>'seller','need'=>'email','token'=>$st['token']??'']);
             api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['seller_start'],'parse_mode'=>'HTML']);
             return;
         }
-}
-api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['invalid_link'],'parse_mode'=>'HTML']);
-return;
-}
+        api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['invalid_link'],'parse_mode'=>'HTML']);
+        return;
+    }
     if($ctype==='private'&&admin_is_user($uid)&&$txt!==''){
         if(admin_on_private_text($uid,$txt))return;
     }
@@ -654,34 +730,53 @@ return;
             return;
         }
 }
-if($ctype==='private'&&$txt!==''){
-if(user_bridge_forward($uid,$txt))return;
-}
-if(in_array($ctype,['group','supergroup'])&&$txt&&!$cmd){
-$st=load_state($cid);
-if($st&&($st['phase']??'')==='await_price'){
-if(!preg_match('/^\d[\d, ]*$/',$txt)){send_price_prompt($cid,$TXT['only_number_price'],$uid,$m,$m['message_id']??null);return;}
-$amount=(int)str_replace([',',' '],['',''],$txt);
-if($amount<50000){send_price_prompt($cid,$TXT['min_price'],$uid,$m,$m['message_id']??null);return;}
-$base=compute_fee($amount);
-$extra=((isset($st['fb_change'])&&$st['fb_change']===true)?10000:0);
-$misc=((bool)($st['misc_on']??false))?10000:0;
-$kycfee=((bool)($st['kyc_on']??false))?5000:0;
-$st['amount']=$amount;
-$st['fee_base']=$base;
-$st['fee_extra_change']=$extra;
-$st['fee_misc']=$misc;
-$st['kyc_fee']=$kycfee;
-$st['fee']=$base+$extra+$misc;
-$st['total']=$amount+$base+$extra+$misc+$kycfee;
-$st['phase']='invoice';
-$st['amt_acks']=[];
-save_state($cid,$st);
-$msg=api('sendMessage',['chat_id'=>$cid,'text'=>invoice_text($st),'parse_mode'=>'HTML','reply_markup'=>json_encode(invoice_kb($st,$uid,false),JSON_UNESCAPED_UNICODE)]);
-api('pinChatMessage',['chat_id'=>$cid,'message_id'=>$msg['result']['message_id']??null,'disable_notification'=>true]);
-return;
-}
-}
+        if($ctype==='private'&&$txt!==''){
+            if(user_bridge_forward($uid,$txt)){
+                return;
+            }
+        }
+        if(in_array($ctype,['group','supergroup'])&&$txt&&!$cmd){
+            $st=load_state($cid);
+            if($st&&($st['phase']??'')==='await_price'){
+                if(!preg_match('/^\d[\d, ]*$/',$txt)){
+                    send_price_prompt($cid,$TXT['only_number_price'],$uid,$m,$m['message_id']??null);
+                    return;
+                }
+                $amount=(int)str_replace([',',' '],['',''],$txt);
+                if($amount<50000){
+                    send_price_prompt($cid,$TXT['min_price'],$uid,$m,$m['message_id']??null);
+                    return;
+                }
+                $base=compute_fee($amount);
+                $extra=((isset($st['fb_change'])&&$st['fb_change']===true)?10000:0);
+                $misc=((bool)($st['misc_on']??false))?10000:0;
+                $kycfee=((bool)($st['kyc_on']??false))?5000:0;
+                $st['amount']=$amount;
+                $st['fee_base']=$base;
+                $st['fee_extra_change']=$extra;
+                $st['fee_misc']=$misc;
+                $st['kyc_fee']=$kycfee;
+                $st['fee']=$base+$extra+$misc;
+                $st['total']=$amount+$base+$extra+$misc+$kycfee;
+                $st['phase']='invoice';
+                $st['amt_acks']=[];
+                save_state($cid,$st);
+                $msg=api('sendMessage',[
+                    'chat_id'=>$cid,
+                    'text'=>invoice_text($st),
+                    'parse_mode'=>'HTML',
+                    'reply_markup'=>json_encode(invoice_kb($st,$uid,false),JSON_UNESCAPED_UNICODE),
+                ]);
+                api('pinChatMessage',[
+                    'chat_id'=>$cid,
+                    'message_id'=>$msg['result']['message_id']??null,
+                    'disable_notification'=>true,
+                ]);
+                return;
+            }
+        }
+    }
+
 function handle_cb($cb){
 global $TXT,$BTN;
 $qid=$cb['id']??'';
