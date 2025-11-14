@@ -109,20 +109,27 @@ return true;
 return false;
 }
 
-function send_price_prompt($chat_id,$text,$target_uid=null,$trigger_message=null,$mention_target=false){
+function send_price_prompt($chat_id,$text,$target_uid=null,$trigger_message=null,$reply_to_message_id=null){
     $reply_markup=['force_reply'=>true];
     if($target_uid!==null&&$target_uid!==0){
         $reply_markup['selective']=true;
-    }
-    $reply_to=null;
-    if(is_array($trigger_message)){
-        $reply_to=(int)($trigger_message['message_id']??0);
-    }
-    if($target_uid!==null&&$target_uid!==0&&($mention_target||!$reply_to)){
-        $mention='<a href="tg://user?id='.(int)$target_uid.'">&#8203;</a>';
+        $mention='<a href="tg://user?id='.(int)$target_uid.'">&#8205;</a>';
         if(strpos($text,'tg://user?id='.(int)$target_uid)===false){
             $text=$mention.$text;
         }
+    }
+    $reply_to=null;
+    if($reply_to_message_id!==null){
+        $reply_to=(int)$reply_to_message_id;
+    }elseif(is_array($trigger_message)){
+        if(isset($trigger_message['message_id'])){
+            $reply_to=(int)$trigger_message['message_id'];
+        }elseif(isset($trigger_message['reply_to_message'])&&is_array($trigger_message['reply_to_message'])&&isset($trigger_message['reply_to_message']['message_id'])){
+            $reply_to=(int)$trigger_message['reply_to_message']['message_id'];
+        }
+    }
+    if($reply_to&&$reply_to<=0){
+        $reply_to=null;
     }
     $params=[
         'chat_id'=>$chat_id,
@@ -653,9 +660,9 @@ if(user_bridge_forward($uid,$txt))return;
 if(in_array($ctype,['group','supergroup'])&&$txt&&!$cmd){
 $st=load_state($cid);
 if($st&&($st['phase']??'')==='await_price'){
-if(!preg_match('/^\d[\d, ]*$/',$txt)){send_price_prompt($cid,$TXT['only_number_price'],$uid,$m);return;}
+if(!preg_match('/^\d[\d, ]*$/',$txt)){send_price_prompt($cid,$TXT['only_number_price'],$uid,$m,$m['message_id']??null);return;}
 $amount=(int)str_replace([',',' '],['',''],$txt);
-if($amount<50000){send_price_prompt($cid,$TXT['min_price'],$uid,$m);return;}
+if($amount<50000){send_price_prompt($cid,$TXT['min_price'],$uid,$m,$m['message_id']??null);return;}
 $base=compute_fee($amount);
 $extra=((isset($st['fb_change'])&&$st['fb_change']===true)?10000:0);
 $misc=((bool)($st['misc_on']??false))?10000:0;
@@ -735,7 +742,7 @@ $has_method=(($st['misc_on']??false)===true)||(count($st['kyc']??[])>=1);
             }else{
                 $st['phase']='await_price';
                 save_state($cid,$st);
-                send_price_prompt($cid,$TXT['await_price'],$uid,$msg,true);
+                send_price_prompt($cid,$TXT['await_price'],$uid,$msg,$msg['message_id']??null);
                 $msgtxt=$need_both?$TXT['both_then_next']:$TXT['ack_done'];
                 api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$msgtxt]);
                 return;
@@ -754,7 +761,7 @@ if(($st['phase']??'')!=='fb_change'){api('answerCallbackQuery',['callback_query_
         api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode(fbq_kb(true),JSON_UNESCAPED_UNICODE)]);
         $st['phase']='await_price';
         save_state($cid,$st);
-        send_price_prompt($cid,$TXT['await_price'],$uid,$msg,true);
+        send_price_prompt($cid,$TXT['await_price'],$uid,$msg,$msg['message_id']??null);
         api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT['ack_done']]);
         return;
     }
@@ -764,7 +771,7 @@ if(($st['phase']??'')!=='fb_change'){api('answerCallbackQuery',['callback_query_
             $st['phase']='await_price';
             $st['amt_acks']=[];
             save_state($cid,$st);
-            send_price_prompt($cid,$TXT['edit_price'],$uid,$msg,true);
+            send_price_prompt($cid,$TXT['edit_price'],$uid,$msg,$msg['message_id']??null);
             api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT['edited_price_ack']]);
             return;
         }
