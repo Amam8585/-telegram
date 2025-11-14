@@ -255,14 +255,61 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                 api('answerCallbackQuery', ['callback_query_id' => $qid]);
                 return true;
             }
-            if (($gs['buyer_id'] ?? 0) > 0 && ($gs['seller_pass'] ?? '') !== '') {
-                api('sendMessage', ['chat_id' => $gs['buyer_id'], 'text' => $TXT['send_pass_to_buyer_prefix'] . $gs['seller_pass'] . $TXT['send_pass_to_buyer_suffix'], 'parse_mode' => 'HTML']);
+            $buyer_id = (int)($gs['buyer_id'] ?? 0);
+            $seller_id = (int)($gs['seller_id'] ?? 0);
+            if ($buyer_id > 0 && ($gs['seller_pass'] ?? '') !== '') {
+                api('sendMessage', ['chat_id' => $buyer_id, 'text' => $TXT['send_pass_to_buyer_prefix'] . $gs['seller_pass'] . $TXT['send_pass_to_buyer_suffix'], 'parse_mode' => 'HTML']);
             }
-            if (($gs['seller_id'] ?? 0) > 0) {
-                api('sendMessage', ['chat_id' => $gs['seller_id'], 'text' => $TXT['change_done_seller'], 'parse_mode' => 'HTML']);
+            $log_command = trim($TXT['log_command_text'] ?? '');
+            $log_message_id = 0;
+            if ($log_command !== '') {
+                $log_res = api('sendMessage', ['chat_id' => $gid, 'text' => $log_command]);
+                if (isset($log_res['ok']) && $log_res['ok']) {
+                    $log_message_id = (int)($log_res['result']['message_id'] ?? 0);
+                }
+                if ($log_message_id > 0) {
+                    api('deleteMessage', ['chat_id' => $gid, 'message_id' => $log_message_id]);
+                }
             }
-            api('sendMessage', ['chat_id' => $gid, 'text' => $TXT['change_done_group'], 'parse_mode' => 'HTML']);
-            $gs['phase'] = 'post_change';
+            $user_link_tpl = $TXT['user_link_template'] ?? '';
+            $missing_html = $TXT['admin_info_missing_value'] ?? '<b>نامشخص</b>';
+            $seller_tag = $missing_html;
+            if ($seller_id > 0) {
+                $seller_username = $gs['seller_username'] ?? '';
+                $seller_label = $seller_username !== '' ? '@' . $seller_username : ($TXT['seller_label'] ?? '');
+                $seller_tag = $user_link_tpl !== '' ? strtr($user_link_tpl, ['{user_id}' => $seller_id, '{label}' => $seller_label]) : $seller_label;
+            }
+            $instruction_tpl = $TXT['log_instruction_text'] ?? '';
+            $instruction_text = $instruction_tpl !== '' ? strtr($instruction_tpl, ['{seller}' => $seller_tag]) : ($seller_tag . ' «به روش بالا لاگ را ارسال کنید.»');
+            $support_mid = (int)($gs['admin_paid_msg_id'] ?? 0);
+            $group_params = [
+                'chat_id' => $gid,
+                'text' => $instruction_text,
+                'parse_mode' => 'HTML'
+            ];
+            if ($support_mid > 0) {
+                $group_params['reply_to_message_id'] = $support_mid;
+                $group_params['allow_sending_without_reply'] = true;
+            }
+            $instruction_mid = 0;
+            $group_res = api('sendMessage', $group_params);
+            if (isset($group_res['ok']) && $group_res['ok']) {
+                $instruction_mid = (int)($group_res['result']['message_id'] ?? 0);
+            }
+            if ($seller_id > 0) {
+                api('sendMessage', ['chat_id' => $seller_id, 'text' => $instruction_text, 'parse_mode' => 'HTML']);
+                $seller_prompt = $TXT['log_media_request'] ?? '';
+                if ($seller_prompt !== '') {
+                    api('sendMessage', ['chat_id' => $seller_id, 'text' => $seller_prompt, 'parse_mode' => 'HTML']);
+                }
+                api('sendMessage', ['chat_id' => $seller_id, 'text' => $TXT['change_done_seller'], 'parse_mode' => 'HTML']);
+            }
+            $gs['phase'] = 'await_seller_log';
+            $gs['await_log'] = [
+                'seller_id' => $seller_id,
+                'buyer_id' => $buyer_id,
+                'instruction_message_id' => $instruction_mid
+            ];
             save_state($gid, $gs);
             api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['sent']]);
             return true;

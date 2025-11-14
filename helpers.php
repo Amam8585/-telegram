@@ -5,6 +5,8 @@ function admin_primary_id(){ $ids=admin_all_ids();return $ids?($ids[0]):'';}
 function admin_is_user($uid){if($uid===null)return false;$uid=(string)$uid;foreach(admin_all_ids() as $id){if($uid===$id)return true;}return false;}
 function admin_broadcast($method,$params){$ids=admin_all_ids();if(!$ids)return false;foreach($ids as $aid){$payload=$params;$payload['chat_id']=$aid;api($method,$payload);}return true;}
 function admin_mentions_text($TXT){$ids=admin_all_ids();if(!$ids)return '';$label_tpl=$TXT['admin_label_template']??'ادمین {index}';$link_tpl=$TXT['admin_tag_with_link']??'';$plain_tpl=$TXT['admin_tag_plain']??'';$out=[];$i=1;foreach($ids as $id){$label=strtr($label_tpl,['{index}'=>$i]);if($link_tpl!==''){$out[]=strtr($link_tpl,['{admin_id}'=>$id,'{admin_label}'=>$label]);}elseif($plain_tpl!==''){$out[]=strtr($plain_tpl,['{admin_label}'=>$label]);}else{$out[]=$label;}$i++;}return trim(implode(' ',$out));}
+
+function generate_trade_password($prefix='Arianstore',$length=5){$chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';$chars_len=strlen($chars);if($chars_len===0){return $prefix;} $suffix='';for($i=0;$i<$length;$i++){try{$index=random_int(0,$chars_len-1);}catch(Exception $e){$index=mt_rand(0,$chars_len-1);} $suffix.=$chars[$index];}return $prefix.$suffix;}
 function data_dir(){return __DIR__.'/data';}
 function ensure_dir(){if(!is_dir(data_dir()))@mkdir(data_dir(),0775,true);}
 function st_path($cid){ensure_dir();return data_dir().'/plan_'.$cid.'.json';}
