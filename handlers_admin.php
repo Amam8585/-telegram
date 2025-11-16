@@ -257,8 +257,15 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             }
             $buyer_id = (int)($gs['buyer_id'] ?? 0);
             $seller_id = (int)($gs['seller_id'] ?? 0);
-            if ($buyer_id > 0 && ($gs['seller_pass'] ?? '') !== '') {
-                api('sendMessage', ['chat_id' => $buyer_id, 'text' => $TXT['send_pass_to_buyer_prefix'] . $gs['seller_pass'] . $TXT['send_pass_to_buyer_suffix'], 'parse_mode' => 'HTML']);
+            $seller_pass = (string)($gs['seller_pass'] ?? '');
+            if ($buyer_id > 0 && $seller_pass !== '') {
+                $buyer_tpl = $TXT['finish_change_buyer_pm'] ?? '';
+                if ($buyer_tpl !== '') {
+                    $buyer_text = strtr($buyer_tpl, ['{password}' => $seller_pass]);
+                    api('sendMessage', ['chat_id' => $buyer_id, 'text' => $buyer_text, 'parse_mode' => 'HTML']);
+                } else {
+                    api('sendMessage', ['chat_id' => $buyer_id, 'text' => $TXT['send_pass_to_buyer_prefix'] . $seller_pass . $TXT['send_pass_to_buyer_suffix'], 'parse_mode' => 'HTML']);
+                }
             }
             $log_command = trim($TXT['log_command_text'] ?? '');
             $log_message_id = 0;
@@ -297,12 +304,10 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                 $instruction_mid = (int)($group_res['result']['message_id'] ?? 0);
             }
             if ($seller_id > 0) {
-                api('sendMessage', ['chat_id' => $seller_id, 'text' => $instruction_text, 'parse_mode' => 'HTML']);
-                $seller_prompt = $TXT['log_media_request'] ?? '';
-                if ($seller_prompt !== '') {
-                    api('sendMessage', ['chat_id' => $seller_id, 'text' => $seller_prompt, 'parse_mode' => 'HTML']);
+                $seller_notice = $TXT['change_done_seller'] ?? '';
+                if ($seller_notice !== '') {
+                    api('sendMessage', ['chat_id' => $seller_id, 'text' => $seller_notice, 'parse_mode' => 'HTML']);
                 }
-                api('sendMessage', ['chat_id' => $seller_id, 'text' => $TXT['change_done_seller'], 'parse_mode' => 'HTML']);
             }
             $gs['phase'] = 'await_seller_log';
             $gs['await_log'] = [

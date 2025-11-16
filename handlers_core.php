@@ -323,7 +323,7 @@ return;
                 }
                 $prompt_tpl=$TXT['log_buyer_prompt']??'';
                 $prompt_text=$prompt_tpl!==''?strtr($prompt_tpl,['{buyer}'=>$buyer_tag]):$buyer_tag;
-                $kb=['inline_keyboard'=>[[['text'=>$BTN['log_confirm_btn']??'✔️ تایید شد','callback_data'=>'log_confirm:'.$cid]]]];
+                $kb=['inline_keyboard'=>[[['text'=>$BTN['log_confirm_btn']??'✔️ تایید','callback_data'=>'log_confirm:'.$cid]]]];
                 $params=[
                     'chat_id'=>$cid,
                     'text'=>$prompt_text,
@@ -1034,19 +1034,24 @@ if(strpos($data,'log_confirm:')===0){
     }
     $admin_tag=admin_mentions_text($TXT);
     $lines=[];
-    $seller_line_tpl=$TXT['log_confirmed_seller_line']??'';
-    if($seller_line_tpl!==''){
-        $lines[]=strtr($seller_line_tpl,['{seller}'=>$seller_tag]);
-    }elseif($seller_tag!==''){
-        $lines[]='• '.$seller_tag.' → «شماره کارت را ارسال کنید.»';
+    $confirm_tpl=$TXT['log_confirmed_group_message']??'';
+    if($confirm_tpl!==''){
+        $final_text=strtr($confirm_tpl,['{seller}'=>$seller_tag,'{admins}'=>$admin_tag]);
+    }else{
+        $seller_line_tpl=$TXT['log_confirmed_seller_line']??'';
+        if($seller_line_tpl!==''){
+            $lines[]=strtr($seller_line_tpl,['{seller}'=>$seller_tag]);
+        }elseif($seller_tag!==''){
+            $lines[]='• '.$seller_tag.' → «شماره کارت را ارسال کنید.»';
+        }
+        $admin_line_tpl=$TXT['log_confirmed_admin_line']??'';
+        if($admin_line_tpl!==''){
+            $lines[]=strtr($admin_line_tpl,['{admins}'=>$admin_tag]);
+        }elseif($admin_tag!==''){
+            $lines[]='• '.$admin_tag.' → «مراحل چنج تایید شد؛ جهت واریز یا ادامه معامله اقدام کنید.»';
+        }
+        $final_text=trim(implode("\n",array_filter($lines)));
     }
-    $admin_line_tpl=$TXT['log_confirmed_admin_line']??'';
-    if($admin_line_tpl!==''){
-        $lines[]=strtr($admin_line_tpl,['{admins}'=>$admin_tag]);
-    }elseif($admin_tag!==''){
-        $lines[]='• '.$admin_tag.' → «مراحل چنج تایید شد؛ جهت واریز یا ادامه معامله اقدام کنید.»';
-    }
-    $final_text=trim(implode("\n",array_filter($lines)));
     if($final_text!==''){
         api('sendMessage',['chat_id'=>$cid,'text'=>$final_text,'parse_mode'=>'HTML','disable_web_page_preview'=>true]);
     }
