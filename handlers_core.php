@@ -30,7 +30,20 @@ function start_plan_now($cid,$chat,$uid_hint){
 global $TXT,$BTN;
 $st=load_state($cid);
 if($st&&($st['phase']??'')!=='done'){return;}
-$st=['phase'=>'rules','kyc'=>[],'acks'=>[],'kyc_on'=>false,'misc_on'=>false,'fb_change'=>null,'token'=>bin2hex(random_bytes(4)),'link_tokens'=>null,'link_tokens_used'=>['buyer'=>null,'seller'=>null],'group_username'=>($chat['username']??'')];
+$st=[
+    'phase'=>'rules',
+    'kyc'=>[],
+    'acks'=>[],
+    'kyc_on'=>false,
+    'misc_on'=>false,
+    'acc_check_on'=>true,
+    'fb_change'=>null,
+    'fee_acc_check'=>5000,
+    'token'=>bin2hex(random_bytes(4)),
+    'link_tokens'=>null,
+    'link_tokens_used'=>['buyer'=>null,'seller'=>null],
+    'group_username'=>($chat['username']??'')
+];
 save_state($cid,$st);
 api('sendMessage',['chat_id'=>$cid,'text'=>$TXT['rules_title'],'parse_mode'=>'HTML','reply_markup'=>json_encode(rules_kb($st,$uid_hint,false),JSON_UNESCAPED_UNICODE)]);
 }
@@ -751,13 +764,15 @@ return;
                 $extra=((isset($st['fb_change'])&&$st['fb_change']===true)?10000:0);
                 $misc=((bool)($st['misc_on']??false))?10000:0;
                 $kycfee=((bool)($st['kyc_on']??false))?5000:0;
+                $acc_check_fee=((bool)($st['acc_check_on']??true))?5000:0;
                 $st['amount']=$amount;
                 $st['fee_base']=$base;
                 $st['fee_extra_change']=$extra;
                 $st['fee_misc']=$misc;
                 $st['kyc_fee']=$kycfee;
+                $st['fee_acc_check']=$acc_check_fee;
                 $st['fee']=$base+$extra+$misc;
-                $st['total']=$amount+$base+$extra+$misc+$kycfee;
+                $st['total']=$amount+$base+$extra+$misc+$kycfee+$acc_check_fee;
                 $st['phase']='invoice';
                 $st['amt_acks']=[];
                 save_state($cid,$st);
@@ -802,11 +817,12 @@ if(!$cid){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
 $st=load_state($cid);
 if(admin_on_callback($data,$uid,$qid,$cid,$mid,$st))return;
 if(!$st){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
-if(in_array($data,['tgl_act','tgl_fb','tgl_gg','tgl_kyc','tgl_misc','ack_go','lock'])){
+if(in_array($data,['tgl_act','tgl_fb','tgl_gg','tgl_kyc','tgl_misc','tgl_acc_check','ack_go','lock'])){
 if(($st['phase']??'')!=='rules'){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
 if($data==='lock'){api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT['lock_btn']]);return;}
 if($data==='tgl_kyc'){$st['kyc_on']=!((bool)($st['kyc_on']??false));save_state($cid,$st);}
 if($data==='tgl_misc'){$st['misc_on']=!((bool)($st['misc_on']??false));if(($st['misc_on']??false)===true){$st['kyc']=[];}$st['fb_change']=null;save_state($cid,$st);}
+if($data==='tgl_acc_check'){$st['acc_check_on']=!((bool)($st['acc_check_on']??true));$st['fee_acc_check']=($st['acc_check_on']??false)?5000:0;save_state($cid,$st);}
 if(in_array($data,['tgl_act','tgl_fb','tgl_gg'])){
 if(($st['misc_on']??false)===true){api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT['need_method']]);return;}
 $map=['tgl_act'=>'act','tgl_fb'=>'fb','tgl_gg'=>'gg'];
