@@ -21,6 +21,144 @@ function label_tick($on,$txt){return ($on?'✅ ':'⬜ ').$txt;}
 function rules_kb($st,$uid,$locked=false){global $BTN;$kyc=$st['kyc']??[];$on_act=in_array('act',$kyc);$on_fb=in_array('fb',$kyc);$on_gg=in_array('gg',$kyc);$kyc_on=(bool)($st['kyc_on']??false);$misc_on=(bool)($st['misc_on']??false);$check_on=(bool)($st['acc_check_on']??true);$ack_on=isset(($st['acks']??[])[$uid]);$cb=function($x)use($locked){return $locked?'lock':$x;};$rows=[];if(!$misc_on){$rows[]=[['text'=>label_tick($on_gg,$BTN['google']),'callback_data'=>$cb('tgl_gg')],['text'=>label_tick($on_fb,$BTN['facebook']),'callback_data'=>$cb('tgl_fb')],['text'=>label_tick($on_act,$BTN['activision']),'callback_data'=>$cb('tgl_act')]];}$rows[]=[['text'=>($kyc_on?$BTN['kyc_on']:$BTN['kyc_off']),'callback_data'=>$cb('tgl_kyc')],['text'=>($misc_on?$BTN['misc_on']:$BTN['misc_off']),'callback_data'=>$cb('tgl_misc')]];$rows[]=[['text'=>($check_on?$BTN['acc_check_on']:$BTN['acc_check_off']),'callback_data'=>$cb('tgl_acc_check')]];$rows[]=[['text'=>($ack_on?$BTN['ack_me_on']:$BTN['ack_me_off']),'callback_data'=>$cb('ack_go')]];return ['inline_keyboard'=>$rows];}
 function fbq_kb($locked=false){global $BTN;$cb=function($x)use($locked){return $locked?'lock':$x;};return ['inline_keyboard'=>[[['text'=>$BTN['fbchg_on'],'callback_data'=>$cb('fbchg_on')],['text'=>$BTN['fbchg_off'],'callback_data'=>$cb('fbchg_off')]]]];}
 function method_kb(){global $BTN;return ['inline_keyboard'=>[[['text'=>$BTN['m_auto'],'callback_data'=>'m_auto'],['text'=>$BTN['m_card'],'callback_data'=>'m_card']]]];}
+function card_types_path(){ensure_dir();return data_dir().'/card_types.json';}
+function card_type_normalize(array $item){
+    $id=trim((string)($item['id']??''));
+    if($id===''){$id=bin2hex(random_bytes(3));}
+    $title=trim((string)($item['title']??''));
+    $card=trim((string)($item['card_number']??''));
+    $holder=trim((string)($item['holder']??''));
+    $sticker=trim((string)($item['sticker']??''));
+    return ['id'=>$id,'title'=>$title,'card_number'=>$card,'holder'=>$holder,'sticker'=>$sticker];
+}
+function card_types_all(){
+    $path=card_types_path();
+    $list=[];
+    if(file_exists($path)){
+        $json=file_get_contents($path);
+        $data=json_decode($json,true);
+        if(is_array($data)){
+            foreach($data as $item){
+                if(!is_array($item))continue;
+                $list[]=card_type_normalize($item);
+            }
+        }
+    }
+    return $list;
+}
+function card_types_save(array $items){
+    if(empty($items)){
+        $path=card_types_path();
+        if(file_exists($path)){@unlink($path);}return;
+    }
+    $clean=[];
+    foreach($items as $item){
+        if(!is_array($item))continue;
+        $clean[]=card_type_normalize($item);
+    }
+    file_put_contents(card_types_path(),json_encode($clean,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT),LOCK_EX);
+}
+function card_types_indexed(){
+    $items=card_types_all();
+    $indexed=[];
+    foreach($items as $item){
+        $indexed[$item['id']]=$item;
+    }
+    return $indexed;
+}
+function card_type_get($id){
+    $id=trim((string)$id);
+    if($id==='')return null;
+    $all=card_types_all();
+    foreach($all as $item){
+        if($item['id']===$id)return $item;
+    }
+    return null;
+}
+function card_type_save(array $item){
+    $item=card_type_normalize($item);
+    $all=card_types_all();
+    $found=false;
+    foreach($all as $idx=>$info){
+        if($info['id']===$item['id']){
+            $all[$idx]=$item;
+            $found=true;
+            break;
+        }
+    }
+    if(!$found){$all[]=$item;}
+    card_types_save($all);
+    return $item;
+}
+function card_type_delete($id){
+    $id=trim((string)$id);
+    if($id==='')return false;
+    $all=card_types_all();
+    $filtered=[];
+    $deleted=false;
+    foreach($all as $item){
+        if($item['id']===$id){$deleted=true;continue;}
+        $filtered[]=$item;
+    }
+    if($deleted){card_types_save($filtered);}
+    return $deleted;
+}
+function admin_card_editor_path(){ensure_dir();return data_dir().'/card_editor.json';}
+function admin_card_editor_all(){
+    $path=admin_card_editor_path();
+    if(file_exists($path)){
+        $json=file_get_contents($path);
+        $data=json_decode($json,true);
+        if(is_array($data))return $data;
+    }
+    return [];
+}
+function admin_card_editor_get($uid){
+    $uid=(string)$uid;
+    if($uid==='')return null;
+    $all=admin_card_editor_all();
+    return $all[$uid]??null;
+}
+function admin_card_editor_set($uid,$info){
+    $uid=(string)$uid;
+    if($uid==='')return;
+    $all=admin_card_editor_all();
+    if($info===null){
+        unset($all[$uid]);
+    }else{
+        $all[$uid]=$info;
+    }
+    $path=admin_card_editor_path();
+    if(empty($all)){
+        if(file_exists($path)){@unlink($path);}return;
+    }
+    file_put_contents($path,json_encode($all,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),LOCK_EX);
+}
+function card_build_payment_text($card_number,$holder,$total){
+    global $TXT;
+    $card=trim((string)$card_number);
+    if($card===''){
+        $card=(defined('ADMIN_CARD')&&ADMIN_CARD)?ADMIN_CARD:((defined('CARD_NUMBER')&&CARD_NUMBER)?CARD_NUMBER:'6219-0000-0000-0000');
+    }
+    $text=($TXT['card_number_label']??'').'<code>'.htmlspecialchars($card,ENT_QUOTES,'UTF-8').'</code>';
+    $holder=trim((string)$holder);
+    $holder_tpl=$TXT['card_holder_line_template']??'';
+    if($holder!==''&&$holder_tpl!==''){
+        $text.="\n".strtr($holder_tpl,['{holder}'=>htmlspecialchars($holder,ENT_QUOTES,'UTF-8')]);
+    }
+    $currency=$TXT['currency_suffix_plain']??'';
+    $amount_tpl=$TXT['card_amount_line_template']??'';
+    if($amount_tpl!==''){
+        $text.="\n".strtr($amount_tpl,['{amount}'=>number_format((int)$total),'{currency}'=>$currency]);
+    }else{
+        $value_tpl=$TXT['card_amount_value_template']??'';
+        $amount_line=$value_tpl!==''?strtr($value_tpl,['{amount}'=>number_format((int)$total),'{currency}'=>$currency]):number_format((int)$total).($currency!==''?' '.$currency:'');
+        $text.="\n".($TXT['card_amount_label']??'').$amount_line;
+    }
+    $after=$TXT['card_after_label']??'';
+    if($after!==''){$text.=$after;}
+    return $text;
+}
 function need_fb_question($st){$a=$st['kyc']??[];$hasAct=in_array('act',$a);$hasFb=in_array('fb',$a);$hasGg=in_array('gg',$a);return ($hasAct&&$hasFb)||($hasAct&&$hasGg)||($hasGg&&$hasFb&&!$hasAct);}
 function compute_fee($amount){if($amount<0)$amount=0;$k=1000;$mm=1000000;$r=[[0,400*$k,15000],[400*$k,900*$k,20000],[900*$k,1.5*$mm,25000],[1.5*$mm,2*$mm,30000],[2*$mm,2.5*$mm,40000],[2.5*$mm,3*$mm,60000],[3*$mm,3.5*$mm,70000],[3.5*$mm,4*$mm,80000],[4*$mm,4.5*$mm,90000],[4.5*$mm,5*$mm,110000],[5*$mm,5.5*$mm,120000],[5.5*$mm,6*$mm,140000],[6*$mm,6.5*$mm,160000],[6.5*$mm,7*$mm,185000],[7*$mm,7.5*$mm,200000],[7.5*$mm,8*$mm,235000],[8*$mm,8.5*$mm,265000],[8.5*$mm,9*$mm,290000],[9*$mm,10*$mm,345000],[10*$mm,11*$mm,400000],[11*$mm,12*$mm,500000],[12*$mm,13*$mm,650000],[13*$mm,14*$mm,750000],[14*$mm,15*$mm,850000]];foreach($r as $x){if($amount>=$x[0]&&$amount<$x[1])return $x[2];}return 850000;}
 function calc_gateway_fee_toman($toman){$fee=(int)round($toman*0.005);if($fee>12000)$fee=12000;if($fee<0)$fee=0;return $fee;}

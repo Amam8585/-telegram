@@ -273,6 +273,11 @@ if(!channel_enforce_join($uid,$cid,$ctx))return;
 }
 $cmd='';
 if($txt&&$txt[0]=='/'){if(preg_match('/^\/([A-Za-z_]+)(?:@[\w_]+)?/u',$txt,$mm)){$cmd=strtolower($mm[1]);}}
+if($ctype==='private'&&admin_is_user($uid)){
+    if(function_exists('admin_card_editor_handle_message')&&admin_card_editor_handle_message($uid,$m)){
+        return;
+    }
+}
 if(in_array($ctype,['group','supergroup'])&&isset($m['new_chat_members'])&&is_array($m['new_chat_members'])){autoplan_on_join($cid,$chat,$m['new_chat_members']);}
 if(in_array($ctype,['group','supergroup'])&&$cmd!==''&&function_exists('channel_enforce_join')){
 $ctx=['chat_type'=>$ctype,'message_id'=>$m['message_id']??0,'command'=>$cmd,'reply_to'=>$m['message_id']??0];
@@ -930,22 +935,78 @@ if($data==='m_card'){
 if(($st['phase']??'')!=='method'){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
 if(function_exists('admin_flags_is_disabled')&&admin_flags_is_disabled('card')){api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT['method_disabled']]);return;}
 $total=(int)($st['total']??get_total($st));
-$card=(defined('ADMIN_CARD')&&ADMIN_CARD)?ADMIN_CARD:((defined('CARD_NUMBER')&&CARD_NUMBER)?CARD_NUMBER:'6219-0000-0000-0000');
-    $currency=$TXT['currency_suffix_plain']??'';
-    $amount_tpl=$TXT['card_amount_value_template']??'';
-    $amount_line=$amount_tpl!==''?strtr($amount_tpl,['{amount}'=>number_format($total),'{currency}'=>$currency]):number_format($total).($currency!==''?' '.$currency:'');
-$text=$TXT['card_number_label'].'<code>'.$card.'</code>'."\n".$TXT['card_amount_label'].$amount_line."\n".$TXT['card_after_label'];
-$kb=['inline_keyboard'=>[[['text'=>$BTN['card_paid'],'callback_data'=>'card_paid']],[['text'=>$BTN['change_method'],'callback_data'=>'back_method']]]];
-api('editMessageText',['chat_id'=>$cid,'message_id'=>$mid,'text'=>$text,'parse_mode'=>'HTML','disable_web_page_preview'=>true]);
-api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)]);
-$st['phase']='card_info_shown';
+$types=card_types_all();
+if(empty($types)){
+    $text=card_build_payment_text('', '', $total);
+    $kb=['inline_keyboard'=>[[['text'=>$BTN['card_paid'],'callback_data'=>'card_paid']],[['text'=>$BTN['change_method'],'callback_data'=>'back_method']]]];
+    api('editMessageText',['chat_id'=>$cid,'message_id'=>$mid,'text'=>$text,'parse_mode'=>'HTML','disable_web_page_preview'=>true]);
+    api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)]);
+    $st['phase']='card_info_shown';
+    $st['total']=$total;
+    save_state($cid,$st);
+    api('answerCallbackQuery',['callback_query_id'=>$qid]);
+    return;
+}
+$prompt=$TXT['card_select_title']??'';
+if($prompt===''){$prompt='<b>نوع کارت مورد نظر را انتخاب کنید</b>';}
+$rows=[];
+$fallback_label=$TXT['card_type_fallback_label']??'کارت';
+foreach($types as $type){
+    $label=$type['title']!==''?$type['title']:$fallback_label;
+    $rows[]=[['text'=>$label,'callback_data'=>'card_type:'.$type['id']]];
+}
+$rows[]=[['text'=>$BTN['change_method'],'callback_data'=>'back_method']];
+api('editMessageText',['chat_id'=>$cid,'message_id'=>$mid,'text'=>$prompt,'parse_mode'=>'HTML','disable_web_page_preview'=>true]);
+api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode(['inline_keyboard'=>$rows],JSON_UNESCAPED_UNICODE)]);
+$st['phase']='card_select';
 $st['total']=$total;
 save_state($cid,$st);
 api('answerCallbackQuery',['callback_query_id'=>$qid]);
 return;
 }
+if(strpos($data,'card_type:')===0){
+    if(($st['phase']??'')!=='card_select'){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
+    $type_id=trim(substr($data,10));
+    $type=$type_id!==''?card_type_get($type_id):null;
+    if(!$type){
+        api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT['card_select_missing']??'']);
+        return;
+    }
+    $total=(int)($st['total']??get_total($st));
+    $text=card_build_payment_text($type['card_number'],$type['holder'],$total);
+    $kb=['inline_keyboard'=>[[['text'=>$BTN['card_paid'],'callback_data'=>'card_paid']],[['text'=>$BTN['change_method'],'callback_data'=>'back_method']]]];
+    $sticker_mid=null;
+    $sticker=trim($type['sticker']??'');
+    if($sticker!==''){
+        $res=api('sendSticker',['chat_id'=>$cid,'sticker'=>$sticker,'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)]);
+        if(isset($res['ok'])&&$res['ok']){
+            $sticker_mid=$res['result']['message_id']??null;
+        }
+    }
+    $msg_params=['chat_id'=>$cid,'text'=>$text,'parse_mode'=>'HTML','disable_web_page_preview'=>true];
+    if($sticker_mid){
+        $msg_params['reply_to_message_id']=$sticker_mid;
+        $msg_params['allow_sending_without_reply']=true;
+    }else{
+        $msg_params['reply_markup']=json_encode($kb,JSON_UNESCAPED_UNICODE);
+    }
+    api('sendMessage',$msg_params);
+    api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE)]);
+    $st['phase']='card_info_shown';
+    $st['total']=$total;
+    $st['card_selected_type']=$type['id'];
+    save_state($cid,$st);
+    $notice_tpl=$TXT['card_selected_notice']??'';
+    $notice=$notice_tpl!==''?strtr($notice_tpl,['{title}'=>$type['title']!==''?$type['title']:($TXT['card_type_fallback_label']??'')]):'';
+    if($notice!==''){
+        api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$notice]);
+    }else{
+        api('answerCallbackQuery',['callback_query_id'=>$qid]);
+    }
+    return;
+}
 if($data==='back_method'){
-if(!in_array(($st['phase']??''),['pay_auto','card_info_shown'])){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
+if(!in_array(($st['phase']??''),['pay_auto','card_info_shown','card_select'])){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
 $st['phase']='method';
 save_state($cid,$st);
 api('editMessageText',['chat_id'=>$cid,'message_id'=>$mid,'text'=>$TXT['method_title'],'parse_mode'=>'HTML']);

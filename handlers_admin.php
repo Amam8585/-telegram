@@ -24,6 +24,7 @@ function admin_panel_render($flags=null){
     $btn_bot = trim(strip_tags($TXT['ap_toggle_bot'] ?? 'وضعیت ربات')) . ($bot_disabled ? $suffix_disabled : $suffix_enabled);
     $btn_auto = trim(strip_tags($TXT['ap_toggle_auto'] ?? 'روش خودکار')) . ($auto_disabled ? $suffix_disabled : $suffix_enabled);
     $btn_card = trim(strip_tags($TXT['ap_toggle_card'] ?? 'روش کارت به کارت')) . ($card_disabled ? $suffix_disabled : $suffix_enabled);
+    $btn_manage_cards = trim(strip_tags($TXT['ap_manage_cards'] ?? 'مدیریت کارت‌ها'));
     $btn_close = trim(strip_tags($TXT['ap_close'] ?? 'بستن پنل'));
 
     $kb = [
@@ -36,6 +37,9 @@ function admin_panel_render($flags=null){
             ],
             [
                 ['text' => $btn_card, 'callback_data' => 'ap_toggle_card'],
+            ],
+            [
+                ['text' => $btn_manage_cards, 'callback_data' => 'ap_card_types'],
             ],
             [
                 ['text' => $btn_close, 'callback_data' => 'ap_close'],
@@ -104,6 +108,98 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             $status_key = $disabled ? 'disabled' : 'enabled';
             $cb_text = $messages[$key][$status_key] ?? ($TXT['ap_saved'] ?? '');
             api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $cb_text]);
+            return true;
+        }
+        if ($data === 'ap_card_types') {
+            [$text, $kb] = admin_card_types_overview_components();
+            api('editMessageText', ['chat_id' => $cid, 'message_id' => $mid, 'text' => $text, 'parse_mode' => 'HTML']);
+            api('editMessageReplyMarkup', ['chat_id' => $cid, 'message_id' => $mid, 'reply_markup' => json_encode($kb, JSON_UNESCAPED_UNICODE)]);
+            api('answerCallbackQuery', ['callback_query_id' => $qid]);
+            return true;
+        }
+        if ($data === 'ap_panel_back') {
+            [$text, $kb] = admin_panel_render();
+            api('editMessageText', ['chat_id' => $cid, 'message_id' => $mid, 'text' => $text, 'parse_mode' => 'HTML']);
+            api('editMessageReplyMarkup', ['chat_id' => $cid, 'message_id' => $mid, 'reply_markup' => json_encode($kb, JSON_UNESCAPED_UNICODE)]);
+            api('answerCallbackQuery', ['callback_query_id' => $qid]);
+            return true;
+        }
+        if ($data === 'ap_card_add') {
+            admin_card_editor_set($uid, ['action' => 'card_add']);
+            $prompt = $TXT['ap_card_add_prompt'] ?? '';
+            if ($prompt !== '') {
+                api('sendMessage', ['chat_id' => $uid, 'text' => $prompt, 'parse_mode' => 'HTML']);
+            }
+            api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_card_add_started'] ?? ($TXT['ap_saved'] ?? '')]);
+            return true;
+        }
+        if (strpos($data, 'ap_card_edit:') === 0) {
+            $target = trim(substr($data, 12));
+            $card = card_type_get($target);
+            if (!$card) {
+                api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_card_not_found'] ?? '']);
+                return true;
+            }
+            [$text, $kb] = admin_card_type_item_components($card);
+            api('editMessageText', ['chat_id' => $cid, 'message_id' => $mid, 'text' => $text, 'parse_mode' => 'HTML']);
+            api('editMessageReplyMarkup', ['chat_id' => $cid, 'message_id' => $mid, 'reply_markup' => json_encode($kb, JSON_UNESCAPED_UNICODE)]);
+            api('answerCallbackQuery', ['callback_query_id' => $qid]);
+            return true;
+        }
+        if (strpos($data, 'ap_card_edit_label:') === 0) {
+            $target = trim(substr($data, 20));
+            if (!card_type_get($target)) {
+                api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_card_not_found'] ?? '']);
+                return true;
+            }
+            admin_card_editor_set($uid, ['action' => 'card_edit_label', 'card_id' => $target]);
+            api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_edit_label_prompt'] ?? '', 'parse_mode' => 'HTML']);
+            api('answerCallbackQuery', ['callback_query_id' => $qid]);
+            return true;
+        }
+        if (strpos($data, 'ap_card_edit_card:') === 0) {
+            $target = trim(substr($data, 19));
+            if (!card_type_get($target)) {
+                api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_card_not_found'] ?? '']);
+                return true;
+            }
+            admin_card_editor_set($uid, ['action' => 'card_edit_card', 'card_id' => $target]);
+            api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_edit_number_prompt'] ?? '', 'parse_mode' => 'HTML']);
+            api('answerCallbackQuery', ['callback_query_id' => $qid]);
+            return true;
+        }
+        if (strpos($data, 'ap_card_edit_holder:') === 0) {
+            $target = trim(substr($data, 21));
+            if (!card_type_get($target)) {
+                api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_card_not_found'] ?? '']);
+                return true;
+            }
+            admin_card_editor_set($uid, ['action' => 'card_edit_holder', 'card_id' => $target]);
+            api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_edit_holder_prompt'] ?? '', 'parse_mode' => 'HTML']);
+            api('answerCallbackQuery', ['callback_query_id' => $qid]);
+            return true;
+        }
+        if (strpos($data, 'ap_card_edit_sticker:') === 0) {
+            $target = trim(substr($data, 22));
+            if (!card_type_get($target)) {
+                api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_card_not_found'] ?? '']);
+                return true;
+            }
+            admin_card_editor_set($uid, ['action' => 'card_edit_sticker', 'card_id' => $target]);
+            api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_edit_sticker_prompt'] ?? '', 'parse_mode' => 'HTML']);
+            api('answerCallbackQuery', ['callback_query_id' => $qid]);
+            return true;
+        }
+        if (strpos($data, 'ap_card_delete:') === 0) {
+            $target = trim(substr($data, 14));
+            if (!card_type_delete($target)) {
+                api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_card_not_found'] ?? '']);
+                return true;
+            }
+            [$text, $kb] = admin_card_types_overview_components();
+            api('editMessageText', ['chat_id' => $cid, 'message_id' => $mid, 'text' => $text, 'parse_mode' => 'HTML']);
+            api('editMessageReplyMarkup', ['chat_id' => $cid, 'message_id' => $mid, 'reply_markup' => json_encode($kb, JSON_UNESCAPED_UNICODE)]);
+            api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_card_deleted'] ?? ($TXT['ap_saved'] ?? '')]);
             return true;
         }
     }
@@ -363,6 +459,186 @@ function admin_on_private_text($uid, $txt)
                 return true;
             }
         }
+    }
+    return false;
+}
+
+function admin_card_types_overview_components()
+{
+    global $TXT;
+    $types = card_types_all();
+    $fallback = $TXT['card_type_fallback_label'] ?? 'کارت';
+    $text = $TXT['ap_card_types_title'] ?? '<b>مدیریت کارت‌ها</b>';
+    $lines = [];
+    foreach ($types as $type) {
+        $label = $type['title'] !== '' ? $type['title'] : $fallback;
+        $card = $type['card_number'] !== '' ? $type['card_number'] : ($TXT['ap_card_empty_value'] ?? '—');
+        $lines[] = '• ' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . ' → <code>' . htmlspecialchars($card, ENT_QUOTES, 'UTF-8') . '</code>';
+    }
+    if (empty($lines)) {
+        $empty = $TXT['ap_card_types_empty'] ?? '';
+        if ($empty !== '') {
+            $text .= "\n" . $empty;
+        }
+    } else {
+        $text .= "\n" . implode("\n", $lines);
+    }
+    $rows = [];
+    foreach ($types as $type) {
+        $label = $type['title'] !== '' ? $type['title'] : $fallback;
+        $rows[] = [
+            ['text' => '⚙️ ' . $label, 'callback_data' => 'ap_card_edit:' . $type['id']]
+        ];
+    }
+    $rows[] = [
+        ['text' => $TXT['ap_card_add_btn'] ?? '➕ افزودن کارت', 'callback_data' => 'ap_card_add']
+    ];
+    $rows[] = [
+        ['text' => $TXT['ap_card_back_btn'] ?? 'بازگشت', 'callback_data' => 'ap_panel_back']
+    ];
+    return [$text, ['inline_keyboard' => $rows]];
+}
+
+function admin_card_type_item_components(array $card)
+{
+    global $TXT;
+    $fallback = $TXT['card_type_fallback_label'] ?? 'کارت';
+    $title = $card['title'] !== '' ? $card['title'] : $fallback;
+    $card_no = $card['card_number'] !== '' ? $card['card_number'] : ($TXT['ap_card_empty_value'] ?? '—');
+    $holder = $card['holder'] !== '' ? $card['holder'] : ($TXT['ap_card_empty_value'] ?? '—');
+    $sticker = $card['sticker'] !== '' ? $card['sticker'] : ($TXT['ap_card_empty_value'] ?? '—');
+    $tpl = $TXT['ap_card_item_template'] ?? '';
+    if ($tpl === '') {
+        $text = '<b>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</b>'
+            . "\n" . '<b>شماره کارت:</b> <code>' . htmlspecialchars($card_no, ENT_QUOTES, 'UTF-8') . '</code>'
+            . "\n" . '<b>به نام:</b> ' . htmlspecialchars($holder, ENT_QUOTES, 'UTF-8')
+            . "\n" . '<b>استیکر:</b> ' . htmlspecialchars($sticker, ENT_QUOTES, 'UTF-8');
+    } else {
+        $text = strtr($tpl, [
+            '{title}' => htmlspecialchars($title, ENT_QUOTES, 'UTF-8'),
+            '{card}' => htmlspecialchars($card_no, ENT_QUOTES, 'UTF-8'),
+            '{holder}' => htmlspecialchars($holder, ENT_QUOTES, 'UTF-8'),
+            '{sticker}' => htmlspecialchars($sticker, ENT_QUOTES, 'UTF-8'),
+        ]);
+    }
+    $rows = [
+        [
+            ['text' => $TXT['ap_card_edit_label_btn'] ?? '📝 ویرایش عنوان', 'callback_data' => 'ap_card_edit_label:' . $card['id']]
+        ],
+        [
+            ['text' => $TXT['ap_card_edit_card_btn'] ?? '💳 ویرایش کارت', 'callback_data' => 'ap_card_edit_card:' . $card['id']]
+        ],
+        [
+            ['text' => $TXT['ap_card_edit_holder_btn'] ?? '👤 ویرایش نام', 'callback_data' => 'ap_card_edit_holder:' . $card['id']]
+        ],
+        [
+            ['text' => $TXT['ap_card_edit_sticker_btn'] ?? '🌁 استیکر', 'callback_data' => 'ap_card_edit_sticker:' . $card['id']]
+        ],
+        [
+            ['text' => $TXT['ap_card_delete_btn'] ?? '🗑 حذف', 'callback_data' => 'ap_card_delete:' . $card['id']]
+        ],
+        [
+            ['text' => $TXT['ap_card_back_btn'] ?? 'بازگشت', 'callback_data' => 'ap_card_types']
+        ],
+    ];
+    return [$text, ['inline_keyboard' => $rows]];
+}
+
+function admin_card_editor_handle_message($uid, $message)
+{
+    global $TXT;
+    $pending = admin_card_editor_get($uid);
+    if (!$pending) {
+        return false;
+    }
+    $action = $pending['action'] ?? '';
+    $card_id = $pending['card_id'] ?? '';
+    $text = trim((string)($message['text'] ?? ''));
+    $lower = mb_strtolower($text, 'UTF-8');
+    if ($text !== '' && in_array($lower, ['/cancel', 'cancel', 'لغو'], true)) {
+        admin_card_editor_set($uid, null);
+        api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_edit_cancelled'] ?? '', 'parse_mode' => 'HTML']);
+        return true;
+    }
+    if ($action === 'card_add') {
+        if ($text === '') {
+            api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_add_prompt'] ?? '', 'parse_mode' => 'HTML']);
+            return true;
+        }
+        $parts = array_map('trim', explode('|', $text));
+        if (count($parts) < 3) {
+            api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_add_format_error'] ?? ($TXT['ap_card_add_prompt'] ?? ''), 'parse_mode' => 'HTML']);
+            return true;
+        }
+        $title = $parts[0];
+        $card_number = $parts[1];
+        $holder = $parts[2];
+        card_type_save(['title' => $title, 'card_number' => $card_number, 'holder' => $holder]);
+        admin_card_editor_set($uid, null);
+        api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_added'] ?? ($TXT['ap_saved'] ?? ''), 'parse_mode' => 'HTML']);
+        return true;
+    }
+    if ($card_id === '') {
+        admin_card_editor_set($uid, null);
+        api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_not_found'] ?? '', 'parse_mode' => 'HTML']);
+        return true;
+    }
+    $card = card_type_get($card_id);
+    if (!$card) {
+        admin_card_editor_set($uid, null);
+        api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_not_found'] ?? '', 'parse_mode' => 'HTML']);
+        return true;
+    }
+    if ($action === 'card_edit_label') {
+        if ($text === '') {
+            api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_edit_label_prompt'] ?? '', 'parse_mode' => 'HTML']);
+            return true;
+        }
+        $card['title'] = $text;
+        card_type_save($card);
+        admin_card_editor_set($uid, null);
+        api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_saved'] ?? ($TXT['ap_saved'] ?? ''), 'parse_mode' => 'HTML']);
+        return true;
+    }
+    if ($action === 'card_edit_card') {
+        if ($text === '') {
+            api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_edit_number_prompt'] ?? '', 'parse_mode' => 'HTML']);
+            return true;
+        }
+        $card['card_number'] = $text;
+        card_type_save($card);
+        admin_card_editor_set($uid, null);
+        api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_saved'] ?? ($TXT['ap_saved'] ?? ''), 'parse_mode' => 'HTML']);
+        return true;
+    }
+    if ($action === 'card_edit_holder') {
+        if ($text === '') {
+            api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_edit_holder_prompt'] ?? '', 'parse_mode' => 'HTML']);
+            return true;
+        }
+        $card['holder'] = $text;
+        card_type_save($card);
+        admin_card_editor_set($uid, null);
+        api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_saved'] ?? ($TXT['ap_saved'] ?? ''), 'parse_mode' => 'HTML']);
+        return true;
+    }
+    if ($action === 'card_edit_sticker') {
+        if (isset($message['sticker'])) {
+            $card['sticker'] = $message['sticker']['file_id'] ?? '';
+            card_type_save($card);
+            admin_card_editor_set($uid, null);
+            api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_saved'] ?? ($TXT['ap_saved'] ?? ''), 'parse_mode' => 'HTML']);
+            return true;
+        }
+        if ($text !== '' && in_array($lower, ['remove', 'delete', 'حذف'], true)) {
+            $card['sticker'] = '';
+            card_type_save($card);
+            admin_card_editor_set($uid, null);
+            api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_sticker_removed'] ?? ($TXT['ap_saved'] ?? ''), 'parse_mode' => 'HTML']);
+            return true;
+        }
+        api('sendMessage', ['chat_id' => $uid, 'text' => $TXT['ap_card_edit_sticker_prompt'] ?? '', 'parse_mode' => 'HTML']);
+        return true;
     }
     return false;
 }
