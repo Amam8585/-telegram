@@ -951,9 +951,21 @@ $prompt=$TXT['card_select_title']??'';
 if($prompt===''){$prompt='<b>نوع کارت مورد نظر را انتخاب کنید</b>';}
 $rows=[];
 $fallback_label=$TXT['card_type_fallback_label']??'کارت';
+$buttons=[];
 foreach($types as $type){
     $label=$type['title']!==''?$type['title']:$fallback_label;
-    $rows[]=[['text'=>$label,'callback_data'=>'card_type:'.$type['id']]];
+    $buttons[]=['text'=>$label,'callback_data'=>'card_type:'.$type['id']];
+}
+$chunk=[];
+foreach($buttons as $btn){
+    $chunk[]=$btn;
+    if(count($chunk)>=3){
+        $rows[]=$chunk;
+        $chunk=[];
+    }
+}
+if(!empty($chunk)){
+    $rows[]=$chunk;
 }
 $rows[]=[['text'=>$BTN['change_method'],'callback_data'=>'back_method']];
 api('editMessageText',['chat_id'=>$cid,'message_id'=>$mid,'text'=>$prompt,'parse_mode'=>'HTML','disable_web_page_preview'=>true]);
