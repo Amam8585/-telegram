@@ -136,28 +136,37 @@ function admin_card_editor_set($uid,$info){
 }
 function card_build_payment_text($card_number,$holder,$total){
     global $TXT;
-    $card=trim((string)$card_number);
-    if($card===''){
-        $card=(defined('ADMIN_CARD')&&ADMIN_CARD)?ADMIN_CARD:((defined('CARD_NUMBER')&&CARD_NUMBER)?CARD_NUMBER:'6219-0000-0000-0000');
+    $lines=[];
+    $card_label=trim((string)($TXT['card_number_label']??''));
+    if($card_label!==''){
+        $card=trim((string)$card_number);
+        if($card===''){
+            $card=(defined('ADMIN_CARD')&&ADMIN_CARD)?ADMIN_CARD:((defined('CARD_NUMBER')&&CARD_NUMBER)?CARD_NUMBER:'6219-0000-0000-0000');
+        }
+        $lines[]=$card_label.'<code>'.htmlspecialchars($card,ENT_QUOTES,'UTF-8').'</code>';
     }
-    $text=($TXT['card_number_label']??'').'<code>'.htmlspecialchars($card,ENT_QUOTES,'UTF-8').'</code>';
-    $holder=trim((string)$holder);
     $holder_tpl=$TXT['card_holder_line_template']??'';
-    if($holder!==''&&$holder_tpl!==''){
-        $text.="\n".strtr($holder_tpl,['{holder}'=>htmlspecialchars($holder,ENT_QUOTES,'UTF-8')]);
+    $holder=trim((string)$holder);
+    if($holder_tpl!==''&&$holder!==''){
+        $lines[]=strtr($holder_tpl,['{holder}'=>htmlspecialchars($holder,ENT_QUOTES,'UTF-8')]);
     }
     $currency=$TXT['currency_suffix_plain']??'';
     $amount_tpl=$TXT['card_amount_line_template']??'';
     if($amount_tpl!==''){
-        $text.="\n".strtr($amount_tpl,['{amount}'=>number_format((int)$total),'{currency}'=>$currency]);
+        $lines[]=strtr($amount_tpl,['{amount}'=>number_format((int)$total),'{currency}'=>$currency]);
     }else{
         $value_tpl=$TXT['card_amount_value_template']??'';
-        $amount_line=$value_tpl!==''?strtr($value_tpl,['{amount}'=>number_format((int)$total),'{currency}'=>$currency]):number_format((int)$total).($currency!==''?' '.$currency:'');
-        $text.="\n".($TXT['card_amount_label']??'').$amount_line;
+        $amount_line=$value_tpl!==''
+            ? strtr($value_tpl,['{amount}'=>number_format((int)$total),'{currency}'=>$currency])
+            : number_format((int)$total).($currency!==''?' '.$currency:'');
+        $lines[]=($TXT['card_amount_label']??'').$amount_line;
     }
     $after=$TXT['card_after_label']??'';
-    if($after!==''){$text.=$after;}
-    return $text;
+    if($after!==''){
+        $lines[]=$after;
+    }
+    $lines=array_values(array_filter($lines,function($line){return trim($line)!=='';}));
+    return implode("\n",$lines);
 }
 function need_fb_question($st){$a=$st['kyc']??[];$hasAct=in_array('act',$a);$hasFb=in_array('fb',$a);$hasGg=in_array('gg',$a);return ($hasAct&&$hasFb)||($hasAct&&$hasGg)||($hasGg&&$hasFb&&!$hasAct);}
 function compute_fee($amount){if($amount<0)$amount=0;$k=1000;$mm=1000000;$r=[[0,400*$k,15000],[400*$k,900*$k,20000],[900*$k,1.5*$mm,25000],[1.5*$mm,2*$mm,30000],[2*$mm,2.5*$mm,40000],[2.5*$mm,3*$mm,60000],[3*$mm,3.5*$mm,70000],[3.5*$mm,4*$mm,80000],[4*$mm,4.5*$mm,90000],[4.5*$mm,5*$mm,110000],[5*$mm,5.5*$mm,120000],[5.5*$mm,6*$mm,140000],[6*$mm,6.5*$mm,160000],[6.5*$mm,7*$mm,185000],[7*$mm,7.5*$mm,200000],[7.5*$mm,8*$mm,235000],[8*$mm,8.5*$mm,265000],[8.5*$mm,9*$mm,290000],[9*$mm,10*$mm,345000],[10*$mm,11*$mm,400000],[11*$mm,12*$mm,500000],[12*$mm,13*$mm,650000],[13*$mm,14*$mm,750000],[14*$mm,15*$mm,850000]];foreach($r as $x){if($amount>=$x[0]&&$amount<$x[1])return $x[2];}return 850000;}

@@ -669,21 +669,35 @@ return;
                             ? ($user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$buyer_id,'{label}'=>$buyer_link_label]):$buyer_link_label)
                             : $missing_html;
                         $seller_email_txt=trim($st['seller_email']??'');
-                        $seller_email_html=$seller_email_txt!==''?htmlspecialchars($seller_email_txt):$missing_html;
+                        $seller_email_plain=$seller_email_txt!==''?htmlspecialchars($seller_email_txt):$missing_plain;
+                        $seller_email_html=$seller_email_txt!==''?'<b>'.htmlspecialchars($seller_email_txt).'</b>':$missing_html;
                         if(($st['seller_pass']??'')===''){
                             $st['seller_pass']=generate_trade_password();
                             save_state($gid,$st);
                         }
                         $seller_pass_txt=$st['seller_pass']??'';
-                        $seller_pass_html=$seller_pass_txt!==''?htmlspecialchars($seller_pass_txt):$missing_html;
+                        $seller_pass_plain=$seller_pass_txt!==''?htmlspecialchars($seller_pass_txt):$missing_plain;
+                        $seller_pass_html=$seller_pass_txt!==''?'<b>'.htmlspecialchars($seller_pass_txt).'</b>':$missing_html;
                         $buyer_email_txt=trim($st['buyer_email']??'');
-                        $buyer_email_html=$buyer_email_txt!==''?htmlspecialchars($buyer_email_txt):$missing_html;
-                        $adm_text=$TXT['admin_info_title']."\n"
-                            .$TXT['admin_info_buyer'].$buyer_tag."\n"
-                            .$TXT['admin_info_buyer_email']."\n".$buyer_email_html."\n"
-                            .$TXT['admin_info_seller'].$seller_tag."\n"
-                            .$TXT['admin_info_email']."\n".$seller_email_html."\n"
-                            .$TXT['admin_info_pass']."\n".$seller_pass_html;
+                        $buyer_email_plain=$buyer_email_txt!==''?htmlspecialchars($buyer_email_txt):$missing_plain;
+                        $buyer_email_html=$buyer_email_txt!==''?'<b>'.htmlspecialchars($buyer_email_txt).'</b>':$missing_html;
+                        $info_tpl=$TXT['admin_info_template']??'';
+                        if($info_tpl!==''){
+                            $adm_text=strtr($info_tpl,[
+                                '{buyer}'=>$buyer_tag,
+                                '{buyer_email}'=>$buyer_email_plain,
+                                '{seller}'=>$seller_tag,
+                                '{seller_email}'=>$seller_email_plain,
+                                '{seller_pass}'=>$seller_pass_plain,
+                            ]);
+                        }else{
+                            $adm_text=$TXT['admin_info_title']."\n"
+                                .$TXT['admin_info_buyer'].$buyer_tag."\n"
+                                .$TXT['admin_info_buyer_email']."\n".$buyer_email_html."\n"
+                                .$TXT['admin_info_seller'].$seller_tag."\n"
+                                .$TXT['admin_info_email']."\n".$seller_email_html."\n"
+                                .$TXT['admin_info_pass']."\n".$seller_pass_html;
+                        }
                         $kb_rows=[
                             [
                                 ['text'=>$BTN['admin_request_code'],'callback_data'=>'req_code:'.$gid]
