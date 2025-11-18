@@ -138,7 +138,8 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             return true;
         }
         if (strpos($data, 'ap_card_edit:') === 0) {
-            $target = trim(substr($data, 12));
+            $prefix = 'ap_card_edit:';
+            $target = trim(substr($data, strlen($prefix)));
             $card = card_type_get($target);
             if (!$card) {
                 api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_card_not_found'] ?? '']);
@@ -151,7 +152,8 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             return true;
         }
         if (strpos($data, 'ap_card_edit_label:') === 0) {
-            $target = trim(substr($data, 20));
+            $prefix = 'ap_card_edit_label:';
+            $target = trim(substr($data, strlen($prefix)));
             if (!card_type_get($target)) {
                 api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_card_not_found'] ?? '']);
                 return true;
@@ -162,7 +164,8 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             return true;
         }
         if (strpos($data, 'ap_card_edit_sticker:') === 0) {
-            $target = trim(substr($data, 22));
+            $prefix = 'ap_card_edit_sticker:';
+            $target = trim(substr($data, strlen($prefix)));
             if (!card_type_get($target)) {
                 api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_card_not_found'] ?? '']);
                 return true;
@@ -173,7 +176,8 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             return true;
         }
         if (strpos($data, 'ap_card_delete:') === 0) {
-            $target = trim(substr($data, 14));
+            $prefix = 'ap_card_delete:';
+            $target = trim(substr($data, strlen($prefix)));
             if (!card_type_delete($target)) {
                 api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['ap_card_not_found'] ?? '']);
                 return true;
