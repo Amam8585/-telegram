@@ -963,6 +963,10 @@ if(empty($types)){
 }
 $prompt=$TXT['card_select_title']??'';
 if($prompt===''){$prompt='<b>نوع کارت مورد نظر را انتخاب کنید</b>';}
+$amount_info=card_build_payment_text('', '', $total);
+if($amount_info!==''){
+    $prompt=$amount_info;
+}
 $rows=[];
 $fallback_label=$TXT['card_type_fallback_label']??'کارت';
 $buttons=[];
@@ -1000,11 +1004,13 @@ if(strpos($data,'card_type:')===0){
     }
     $total=(int)($st['total']??get_total($st));
     $text=card_build_payment_text($type['card_number'],$type['holder'],$total);
-    $kb=['inline_keyboard'=>[[['text'=>$BTN['card_paid'],'callback_data'=>'card_paid']],[['text'=>$BTN['change_method'],'callback_data'=>'back_method']]]];
+    $kb_paid_only=['inline_keyboard'=>[[['text'=>$BTN['card_paid'],'callback_data'=>'card_paid']]]];
+    $kb_with_change=$kb_paid_only;
+    $kb_with_change['inline_keyboard'][]=[['text'=>$BTN['change_method'],'callback_data'=>'back_method']];
     $sticker_mid=null;
     $sticker=trim($type['sticker']??'');
     if($sticker!==''){
-        $res=api('sendSticker',['chat_id'=>$cid,'sticker'=>$sticker,'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)]);
+        $res=api('sendSticker',['chat_id'=>$cid,'sticker'=>$sticker,'reply_markup'=>json_encode($kb_paid_only,JSON_UNESCAPED_UNICODE)]);
         if(isset($res['ok'])&&$res['ok']){
             $sticker_mid=$res['result']['message_id']??null;
         }
@@ -1014,7 +1020,7 @@ if(strpos($data,'card_type:')===0){
         $msg_params['reply_to_message_id']=$sticker_mid;
         $msg_params['allow_sending_without_reply']=true;
     }else{
-        $msg_params['reply_markup']=json_encode($kb,JSON_UNESCAPED_UNICODE);
+        $msg_params['reply_markup']=json_encode($kb_with_change,JSON_UNESCAPED_UNICODE);
     }
     api('sendMessage',$msg_params);
     api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE)]);
