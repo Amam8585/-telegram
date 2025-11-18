@@ -371,15 +371,37 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             $instruction_tpl = $TXT['log_instruction_text'] ?? '';
             $instruction_text = $instruction_tpl !== '' ? strtr($instruction_tpl, ['{seller}' => $seller_tag]) : ($seller_tag . ' «به روش بالا لاگ را ارسال کنید.»');
             $support_mid = (int)($gs['admin_paid_msg_id'] ?? 0);
-            $group_params = [
+            $threading_params = [];
+            if ($support_mid > 0) {
+                $threading_params = [
+                    'reply_to_message_id' => $support_mid,
+                    'allow_sending_without_reply' => true,
+                ];
+            }
+            $prev_notice_mid = 0;
+            if (isset($gs['await_log']) && is_array($gs['await_log'])) {
+                $prev_notice_mid = (int)($gs['await_log']['change_done_notice_message_id'] ?? 0);
+            }
+            $notice_mid = $prev_notice_mid;
+            if ($notice_mid <= 0) {
+                $notice_text = trim($TXT['change_done_group'] ?? '');
+                if ($notice_text !== '') {
+                    $notice_params = array_merge([
+                        'chat_id' => $gid,
+                        'text' => $notice_text,
+                        'parse_mode' => 'HTML'
+                    ], $threading_params);
+                    $notice_res = api('sendMessage', $notice_params);
+                    if (isset($notice_res['ok']) && $notice_res['ok']) {
+                        $notice_mid = (int)($notice_res['result']['message_id'] ?? 0);
+                    }
+                }
+            }
+            $group_params = array_merge([
                 'chat_id' => $gid,
                 'text' => $instruction_text,
                 'parse_mode' => 'HTML'
-            ];
-            if ($support_mid > 0) {
-                $group_params['reply_to_message_id'] = $support_mid;
-                $group_params['allow_sending_without_reply'] = true;
-            }
+            ], $threading_params);
             $instruction_mid = 0;
             $group_res = api('sendMessage', $group_params);
             if (isset($group_res['ok']) && $group_res['ok']) {
@@ -395,7 +417,8 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             $gs['await_log'] = [
                 'seller_id' => $seller_id,
                 'buyer_id' => $buyer_id,
-                'instruction_message_id' => $instruction_mid
+                'instruction_message_id' => $instruction_mid,
+                'change_done_notice_message_id' => $notice_mid
             ];
             save_state($gid, $gs);
             api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['sent']]);
