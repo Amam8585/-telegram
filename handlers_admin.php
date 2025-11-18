@@ -371,12 +371,14 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             $instruction_tpl = $TXT['log_instruction_text'] ?? '';
             $instruction_text = $instruction_tpl !== '' ? strtr($instruction_tpl, ['{seller}' => $seller_tag]) : ($seller_tag . ' «به روش بالا لاگ را ارسال کنید.»');
             $support_mid = (int)($gs['admin_paid_msg_id'] ?? 0);
+            $topic_id = (int)($gs['topic_id'] ?? 0);
             $threading_params = [];
+            if ($topic_id > 0) {
+                $threading_params['message_thread_id'] = $topic_id;
+            }
             if ($support_mid > 0) {
-                $threading_params = [
-                    'reply_to_message_id' => $support_mid,
-                    'allow_sending_without_reply' => true,
-                ];
+                $threading_params['reply_to_message_id'] = $support_mid;
+                $threading_params['allow_sending_without_reply'] = true;
             }
             $prev_notice_mid = 0;
             if (isset($gs['await_log']) && is_array($gs['await_log'])) {

@@ -834,6 +834,13 @@ return;
 }
 if(!$cid){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
 $st=load_state($cid);
+if($st){
+    $thread_id=(int)($msg['message_thread_id']??0);
+    if($thread_id>0&&((int)($st['topic_id']??0)!==$thread_id)){
+        $st['topic_id']=$thread_id;
+        save_state($cid,$st);
+    }
+}
 if(admin_on_callback($data,$uid,$qid,$cid,$mid,$st))return;
 if(!$st){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
 if(in_array($data,['tgl_act','tgl_fb','tgl_gg','tgl_kyc','tgl_misc','tgl_acc_check','ack_go','lock'])){
@@ -1107,7 +1114,12 @@ $st['phase']='done';
 $tpl=$TXT['admin_paid_msg'];
 $botu=$TXT['bot_username'];
 $msg=strtr($tpl,['{seller_tag}'=>$seller_tag,'{buyer_tag}'=>$buyer_tag,'{bot_username}'=>$botu,'{buyer_token}'=>$buyer_token,'{seller_token}'=>$seller_token]);
-$res=api('sendMessage',['chat_id'=>$cid,'text'=>$msg,'parse_mode'=>'HTML','disable_web_page_preview'=>true]);
+$topic_id=(int)($st['topic_id']??0);
+$msg_params=['chat_id'=>$cid,'text'=>$msg,'parse_mode'=>'HTML','disable_web_page_preview'=>true];
+if($topic_id>0){
+    $msg_params['message_thread_id']=$topic_id;
+}
+$res=api('sendMessage',$msg_params);
 $st['admin_paid_msg_id']=(int)($res['result']['message_id']??0);
 save_state($cid,$st);
 api('answerCallbackQuery',['callback_query_id'=>$qid]);
