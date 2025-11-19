@@ -378,11 +378,30 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             $instruction_text = $instruction_tpl !== '' ? strtr($instruction_tpl, ['{seller}' => $seller_tag]) : ($seller_tag . ' «به روش بالا لاگ را ارسال کنید.»');
             $support_mid = (int)($gs['admin_paid_msg_id'] ?? 0);
             $topic_id = (int)($gs['topic_id'] ?? 0);
+            if ($topic_id <= 0 && $support_mid > 0) {
+                $fetched_topic_id = 0;
+                $support_info = api('getChatMessage', ['chat_id' => $gid, 'message_id' => $support_mid]);
+                if (is_array($support_info) && ($support_info['ok'] ?? false)) {
+                    $fetched_topic_id = (int)($support_info['result']['message_thread_id'] ?? 0);
+                }
+                if ($fetched_topic_id <= 0) {
+                    $topic_info = api('getForumTopic', ['chat_id' => $gid, 'message_thread_id' => $support_mid]);
+                    if (is_array($topic_info) && ($topic_info['ok'] ?? false)) {
+                        $fetched_topic_id = (int)($topic_info['result']['message_thread_id'] ?? 0);
+                    }
+                }
+                if ($fetched_topic_id > 0) {
+                    $topic_id = $fetched_topic_id;
+                    $gs['topic_id'] = $topic_id;
+                }
+            }
             $threading_params = [];
+            $can_reply = false;
             if ($topic_id > 0) {
                 $threading_params['message_thread_id'] = $topic_id;
+                $can_reply = true;
             }
-            if ($support_mid > 0) {
+            if ($support_mid > 0 && $can_reply) {
                 $threading_params['reply_to_message_id'] = $support_mid;
                 $threading_params['allow_sending_without_reply'] = true;
             }

@@ -834,11 +834,21 @@ return;
 }
 if(!$cid){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
 $st=load_state($cid);
+$thread_id=(int)($msg['message_thread_id']??0);
 if($st){
-    $thread_id=(int)($msg['message_thread_id']??0);
     if($thread_id>0&&((int)($st['topic_id']??0)!==$thread_id)){
         $st['topic_id']=$thread_id;
         save_state($cid,$st);
+    }
+}
+if($thread_id>0&&strpos($data,'finish_change:')===0){
+    $target_gid=(int)substr($data,14);
+    if($target_gid>0&&$target_gid!==$cid){
+        $target_state=load_state($target_gid);
+        if($target_state&&((int)($target_state['topic_id']??0)!==$thread_id)){
+            $target_state['topic_id']=$thread_id;
+            save_state($target_gid,$target_state);
+        }
     }
 }
 if(admin_on_callback($data,$uid,$qid,$cid,$mid,$st))return;
@@ -1120,7 +1130,16 @@ if($topic_id>0){
     $msg_params['message_thread_id']=$topic_id;
 }
 $res=api('sendMessage',$msg_params);
-$st['admin_paid_msg_id']=(int)($res['result']['message_id']??0);
+$admin_paid_msg_id=0;
+if(isset($res['ok'])&&$res['ok']){
+    $admin_paid_msg_id=(int)($res['result']['message_id']??0);
+    $sent_thread_id=(int)($res['result']['message_thread_id']??0);
+    if($sent_thread_id>0&&$sent_thread_id!==$topic_id){
+        $topic_id=$sent_thread_id;
+        $st['topic_id']=$topic_id;
+    }
+}
+$st['admin_paid_msg_id']=$admin_paid_msg_id;
 save_state($cid,$st);
 api('answerCallbackQuery',['callback_query_id'=>$qid]);
 return;
