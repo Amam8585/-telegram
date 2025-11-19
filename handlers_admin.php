@@ -401,7 +401,7 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                             'text' => $notice_text,
                             'parse_mode' => 'HTML'
                         ], $threading_params);
-                        $notice_res = api('sendMessage', $notice_params);
+                        $notice_res = admin_send_message_with_reply_retry($notice_params);
                         if (isset($notice_res['ok']) && $notice_res['ok']) {
                             $notice_mid = (int)($notice_res['result']['message_id'] ?? 0);
                         }
@@ -414,10 +414,19 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                 'parse_mode' => 'HTML'
             ], $threading_params);
             $instruction_mid = 0;
-            $group_res = api('sendMessage', $group_params);
-            if (isset($group_res['ok']) && $group_res['ok']) {
-                $instruction_mid = (int)($group_res['result']['message_id'] ?? 0);
+            $group_res = admin_send_message_with_reply_retry($group_params);
+            if (!isset($group_res['ok']) || !$group_res['ok']) {
+                $error_desc = trim((string)($group_res['description'] ?? ''));
+                if ($error_desc === '') {
+                    $error_desc = $TXT['finish_change_group_error_unknown'] ?? 'خطای نامشخص';
+                }
+                $alert_tpl = $TXT['finish_change_group_error'] ?? '⛔️ ارسال پیام به گروه انجام نشد: {error}';
+                $alert_text = strtr($alert_tpl, ['{error}' => $error_desc]);
+                error_log('[finish_change] Failed to send instruction to chat ' . $gid . ': ' . $error_desc);
+                api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $alert_text, 'show_alert' => true]);
+                return true;
             }
+            $instruction_mid = (int)($group_res['result']['message_id'] ?? 0);
             if ($seller_id > 0) {
                 $seller_notice = $TXT['change_done_seller'] ?? '';
                 if ($seller_notice !== '') {
@@ -684,4 +693,29 @@ function admin_card_editor_finish_card_add($uid, array $draft)
     if ($text !== '') {
         api('sendMessage', ['chat_id' => $uid, 'text' => $text, 'parse_mode' => 'HTML']);
     }
+}
+
+function admin_send_message_with_reply_retry(array $params)
+{
+    $res = api('sendMessage', $params);
+    if ((!isset($res['ok']) || !$res['ok']) && isset($params['reply_to_message_id'])) {
+        $desc = strtolower((string)($res['description'] ?? ''));
+        if ($desc !== '' && admin_is_reply_missing_error($desc)) {
+            $retry_params = $params;
+            unset($retry_params['reply_to_message_id'], $retry_params['allow_sending_without_reply']);
+            $res = api('sendMessage', $retry_params);
+        }
+    }
+    return $res;
+}
+
+function admin_is_reply_missing_error($description)
+{
+    $needles = ['reply message not found', 'replied message not found', 'reply to message not found'];
+    foreach ($needles as $needle) {
+        if (strpos($description, $needle) !== false) {
+            return true;
+        }
+    }
+    return false;
 }
