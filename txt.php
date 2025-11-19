@@ -260,6 +260,7 @@ HTML
 'https://t.me/{bot_username}?start=get_{seller_token}'."\n".
 '────────────────────────────'."\n".
 '⚠️ ┇ <b>توجه:</b> هیچ اطلاعاتی مانند جیمیل، رمز یا کد را در گروه یا پیوی ارسال نکنید',
+'admin_paid_send_error'=>'⛔️ | ارسال پیام تایید پرداخت انجام نشد. لطفاً دسترسی گفتگو در گروه را بررسی کنید و دوباره تلاش کنید.',
 'bot_username'=>'Uwhehshshhbot',
 'zp_back_bad_request'=>'BAD REQUEST',
 'zp_back_not_found'=>'NOT FOUND',
