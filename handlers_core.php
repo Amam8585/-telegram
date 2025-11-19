@@ -843,11 +843,14 @@ if($st){
 }
 if($thread_id>0&&strpos($data,'finish_change:')===0){
     $target_gid=(int)substr($data,14);
-    if($target_gid>0&&$target_gid!==$cid){
-        $target_state=load_state($target_gid);
+    if($target_gid>0&&$target_gid===$cid&&(!$st||((int)($st['topic_id']??0)!==$thread_id))){
+        $target_state=$st?:load_state($target_gid);
         if($target_state&&((int)($target_state['topic_id']??0)!==$thread_id)){
             $target_state['topic_id']=$thread_id;
             save_state($target_gid,$target_state);
+            if($target_gid===$cid){
+                $st=$target_state;
+            }
         }
     }
 }

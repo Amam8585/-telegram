@@ -344,9 +344,12 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                 $buyer_tpl = $TXT['finish_change_buyer_pm'] ?? '';
                 if ($buyer_tpl !== '') {
                     $buyer_text = strtr($buyer_tpl, ['{password}' => $seller_pass]);
+                    $buyer_text = telegram_normalize_html_text($buyer_text);
                     api('sendMessage', ['chat_id' => $buyer_id, 'text' => $buyer_text, 'parse_mode' => 'HTML']);
                 } else {
-                    api('sendMessage', ['chat_id' => $buyer_id, 'text' => $TXT['send_pass_to_buyer_prefix'] . $seller_pass . $TXT['send_pass_to_buyer_suffix'], 'parse_mode' => 'HTML']);
+                    $fallback_text = $TXT['send_pass_to_buyer_prefix'] . $seller_pass . $TXT['send_pass_to_buyer_suffix'];
+                    $fallback_text = telegram_normalize_html_text($fallback_text);
+                    api('sendMessage', ['chat_id' => $buyer_id, 'text' => $fallback_text, 'parse_mode' => 'HTML']);
                 }
             }
             $log_command = trim($TXT['log_command_text'] ?? '');
@@ -376,6 +379,7 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             }
             $instruction_tpl = $TXT['log_instruction_text'] ?? '';
             $instruction_text = $instruction_tpl !== '' ? strtr($instruction_tpl, ['{seller}' => $seller_tag]) : ($seller_tag . ' «به روش بالا لاگ را ارسال کنید.»');
+            $instruction_text = telegram_normalize_html_text($instruction_text);
             $support_mid = (int)($gs['admin_paid_msg_id'] ?? 0);
             $topic_id = (int)($gs['topic_id'] ?? 0);
             if ($topic_id <= 0 && $support_mid > 0) {
@@ -395,16 +399,7 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                     $gs['topic_id'] = $topic_id;
                 }
             }
-            $threading_params = [];
-            $can_reply = false;
-            if ($topic_id > 0) {
-                $threading_params['message_thread_id'] = $topic_id;
-                $can_reply = true;
-            }
-            if ($support_mid > 0 && $can_reply) {
-                $threading_params['reply_to_message_id'] = $support_mid;
-                $threading_params['allow_sending_without_reply'] = true;
-            }
+            $threading_params = admin_build_threading_params($gs);
             $prev_notice_mid = 0;
             if (isset($gs['await_log']) && is_array($gs['await_log'])) {
                 $prev_notice_mid = (int)($gs['await_log']['change_done_notice_message_id'] ?? 0);
@@ -414,26 +409,28 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                 $notice_tpl = trim($TXT['change_done_group'] ?? '');
                 if ($notice_tpl !== '') {
                     $notice_text = trim(strtr($notice_tpl, ['{seller}' => $seller_tag, '{buyer}' => $buyer_tag]));
+                    $notice_text = telegram_normalize_html_text($notice_text);
                     if ($notice_text !== '') {
                         $notice_params = array_merge([
                             'chat_id' => $gid,
                             'text' => $notice_text,
                             'parse_mode' => 'HTML'
                         ], $threading_params);
-                        $notice_res = admin_send_message_with_reply_retry($notice_params);
+                        $notice_res = admin_send_group_message_with_thread_guard($gid, $notice_params, $gs);
                         if (isset($notice_res['ok']) && $notice_res['ok']) {
                             $notice_mid = (int)($notice_res['result']['message_id'] ?? 0);
                         }
                     }
                 }
             }
+            $threading_params = admin_build_threading_params($gs);
             $group_params = array_merge([
                 'chat_id' => $gid,
                 'text' => $instruction_text,
                 'parse_mode' => 'HTML'
             ], $threading_params);
             $instruction_mid = 0;
-            $group_res = admin_send_message_with_reply_retry($group_params);
+            $group_res = admin_send_group_message_with_thread_guard($gid, $group_params, $gs);
             if (!isset($group_res['ok']) || !$group_res['ok']) {
                 $error_desc = trim((string)($group_res['description'] ?? ''));
                 if ($error_desc === '') {
@@ -449,6 +446,7 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             if ($seller_id > 0) {
                 $seller_notice = $TXT['change_done_seller'] ?? '';
                 if ($seller_notice !== '') {
+                    $seller_notice = telegram_normalize_html_text($seller_notice);
                     api('sendMessage', ['chat_id' => $seller_id, 'text' => $seller_notice, 'parse_mode' => 'HTML']);
                 }
             }
@@ -737,4 +735,56 @@ function admin_is_reply_missing_error($description)
         }
     }
     return false;
+}
+
+function admin_is_thread_missing_error($description)
+{
+    $needles = ['message thread not found', 'message thread is not available'];
+    foreach ($needles as $needle) {
+        if (strpos($description, $needle) !== false) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function admin_response_is_thread_missing($response)
+{
+    if (isset($response['ok']) && $response['ok']) {
+        return false;
+    }
+    $desc = strtolower((string)($response['description'] ?? ''));
+    if ($desc === '') {
+        return false;
+    }
+    return admin_is_thread_missing_error($desc);
+}
+
+function admin_send_group_message_with_thread_guard($chat_id, array $params, array &$state)
+{
+    $res = admin_send_message_with_reply_retry($params);
+    if (admin_response_is_thread_missing($res) && isset($params['message_thread_id'])) {
+        $state['topic_id'] = 0;
+        save_state($chat_id, $state);
+        $retry_params = $params;
+        unset($retry_params['message_thread_id'], $retry_params['reply_to_message_id'], $retry_params['allow_sending_without_reply']);
+        $res = admin_send_message_with_reply_retry($retry_params);
+    }
+    return $res;
+}
+
+function admin_build_threading_params(array $state)
+{
+    $params = [];
+    $topic_id = (int)($state['topic_id'] ?? 0);
+    if ($topic_id <= 0) {
+        return $params;
+    }
+    $params['message_thread_id'] = $topic_id;
+    $support_mid = (int)($state['admin_paid_msg_id'] ?? 0);
+    if ($support_mid > 0) {
+        $params['reply_to_message_id'] = $support_mid;
+        $params['allow_sending_without_reply'] = true;
+    }
+    return $params;
 }
