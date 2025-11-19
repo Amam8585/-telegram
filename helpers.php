@@ -7,6 +7,14 @@ function api($m,$p,$multi=false){
     curl_setopt_array($ch,[CURLOPT_URL=>'https://api.telegram.org/bot'.BOT_TOKEN.'/'.$m,CURLOPT_POST=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_POSTFIELDS=>$p]);
     if($multi){curl_setopt($ch,CURLOPT_HTTPHEADER,[]);} $r=curl_exec($ch);curl_close($ch);return json_decode($r,true);
 }
+
+function telegram_normalize_html_text($text){
+    if(!is_string($text)||$text===''){
+        return $text;
+    }
+    $search=['<br>','<br/>','<br />'];
+    return str_ireplace($search,PHP_EOL,$text);
+}
 function admin_all_ids(){static $cache=null;if($cache!==null)return $cache;$ids=[];if(defined('ADMIN_IDS')){$raw=ADMIN_IDS;if(!is_array($raw)){$raw=[$raw];}foreach($raw as $id){$id=trim((string)$id);if($id!==''){$ids[]=$id;}}}elseif(defined('ADMIN_ID')){$ids[]=(string)ADMIN_ID;}$cache=$ids;return $cache;}
 function admin_primary_id(){ $ids=admin_all_ids();return $ids?($ids[0]):'';}
 function admin_is_user($uid){if($uid===null)return false;$uid=(string)$uid;foreach(admin_all_ids() as $id){if($uid===$id)return true;}return false;}

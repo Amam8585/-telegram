@@ -4,6 +4,11 @@ require __DIR__.'/../txt.php';
 require __DIR__.'/../helpers.php';
 require __DIR__.'/../handlers_admin.php';
 
+$TXT['finish_change_buyer_pm'] = str_replace("\n", "<br>\n", $TXT['finish_change_buyer_pm']);
+$TXT['change_done_group'] = str_replace("\n", "<br>\n", $TXT['change_done_group']);
+$TXT['log_instruction_text'] = str_replace("\n", "<br>\n", $TXT['log_instruction_text']);
+$TXT['change_done_seller'] = str_replace("\n", "<br>\n", $TXT['change_done_seller']);
+
 $gid = 123456;
 $state = [
     'buyer_id' => 555001,
@@ -56,6 +61,17 @@ foreach ($noticeMessages as $msg) {
     echo $msg['params']['text'] . PHP_EOL;
 }
 
+$htmlBreakViolations = array_values(array_filter($calls, function ($call) {
+    if ($call['method'] !== 'sendMessage') {
+        return false;
+    }
+    if (strcasecmp($call['params']['parse_mode'] ?? '', 'HTML') !== 0) {
+        return false;
+    }
+    return stripos($call['params']['text'], '<br') !== false;
+}));
+echo 'متن‌های دارای <br>: ' . count($htmlBreakViolations) . PHP_EOL;
+
 del_state($gid);
 
 $gidFail = 654321;
@@ -95,3 +111,48 @@ echo 'آیا await_log تعیین شده؟ ' . (isset($stateAfterFail['await_log
 echo 'متن هشدار ادمین: ' . $warningText . PHP_EOL;
 
 del_state($gidFail);
+
+$gidThread = 789123;
+$threadState = [
+    'phase' => 'await_finish_button',
+    'buyer_id' => 800001,
+    'seller_id' => 800002,
+    'seller_pass' => 'ThreadPass',
+    'admin_paid_msg_id' => 44,
+    'topic_id' => 999,
+];
+save_state($gidThread, $threadState);
+
+$calls = [];
+$GLOBALS['__telegram_api_hook'] = function($method, $params) use (&$calls, $gidThread) {
+    $calls[] = ['method' => $method, 'params' => $params];
+    if ($method === 'sendMessage' && (int)($params['chat_id'] ?? 0) === $gidThread) {
+        if (isset($params['message_thread_id'])) {
+            return ['ok' => false, 'description' => 'Bad Request: message thread not found'];
+        }
+        return ['ok' => true, 'result' => ['message_id' => 501]];
+    }
+    return ['ok' => true];
+};
+
+echo PHP_EOL . "== سناریوی حذف message_thread_id نامعتبر ==" . PHP_EOL;
+admin_on_callback('finish_change:' . $gidThread, (int)ADMIN_ID, 'test-query', $gidThread, 10, []);
+
+unset($GLOBALS['__telegram_api_hook']);
+$threadStateAfter = load_state($gidThread);
+$topicAfter = (int)($threadStateAfter['topic_id'] ?? 0);
+echo 'topic_id پس از ارسال: ' . $topicAfter . PHP_EOL;
+$threadAttempts = array_values(array_filter($calls, function ($call) use ($gidThread) {
+    return $call['method'] === 'sendMessage'
+        && (int)($call['params']['chat_id'] ?? 0) === $gidThread
+        && isset($call['params']['message_thread_id']);
+}));
+$plainAttempts = array_values(array_filter($calls, function ($call) use ($gidThread) {
+    return $call['method'] === 'sendMessage'
+        && (int)($call['params']['chat_id'] ?? 0) === $gidThread
+        && !isset($call['params']['message_thread_id']);
+}));
+echo 'تعداد ارسال با تاپیک: ' . count($threadAttempts) . PHP_EOL;
+echo 'تعداد ارسال بدون تاپیک: ' . count($plainAttempts) . PHP_EOL;
+
+del_state($gidThread);
