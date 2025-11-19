@@ -368,6 +368,12 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                 $seller_label = $seller_username !== '' ? '@' . $seller_username : ($TXT['seller_label'] ?? '');
                 $seller_tag = $user_link_tpl !== '' ? strtr($user_link_tpl, ['{user_id}' => $seller_id, '{label}' => $seller_label]) : $seller_label;
             }
+            $buyer_tag = $missing_html;
+            if ($buyer_id > 0) {
+                $buyer_username = $gs['buyer_username'] ?? '';
+                $buyer_label = $buyer_username !== '' ? '@' . $buyer_username : ($TXT['buyer_label'] ?? '');
+                $buyer_tag = $user_link_tpl !== '' ? strtr($user_link_tpl, ['{user_id}' => $buyer_id, '{label}' => $buyer_label]) : $buyer_label;
+            }
             $instruction_tpl = $TXT['log_instruction_text'] ?? '';
             $instruction_text = $instruction_tpl !== '' ? strtr($instruction_tpl, ['{seller}' => $seller_tag]) : ($seller_tag . ' «به روش بالا لاگ را ارسال کنید.»');
             $support_mid = (int)($gs['admin_paid_msg_id'] ?? 0);
@@ -386,16 +392,19 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             }
             $notice_mid = $prev_notice_mid;
             if ($notice_mid <= 0) {
-                $notice_text = trim($TXT['change_done_group'] ?? '');
-                if ($notice_text !== '') {
-                    $notice_params = array_merge([
-                        'chat_id' => $gid,
-                        'text' => $notice_text,
-                        'parse_mode' => 'HTML'
-                    ], $threading_params);
-                    $notice_res = api('sendMessage', $notice_params);
-                    if (isset($notice_res['ok']) && $notice_res['ok']) {
-                        $notice_mid = (int)($notice_res['result']['message_id'] ?? 0);
+                $notice_tpl = trim($TXT['change_done_group'] ?? '');
+                if ($notice_tpl !== '') {
+                    $notice_text = trim(strtr($notice_tpl, ['{seller}' => $seller_tag, '{buyer}' => $buyer_tag]));
+                    if ($notice_text !== '') {
+                        $notice_params = array_merge([
+                            'chat_id' => $gid,
+                            'text' => $notice_text,
+                            'parse_mode' => 'HTML'
+                        ], $threading_params);
+                        $notice_res = api('sendMessage', $notice_params);
+                        if (isset($notice_res['ok']) && $notice_res['ok']) {
+                            $notice_mid = (int)($notice_res['result']['message_id'] ?? 0);
+                        }
                     }
                 }
             }
