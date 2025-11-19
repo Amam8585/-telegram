@@ -1115,6 +1115,26 @@ $seller_username=$st['seller_username']??'';
 }
 $buyer_token=bin2hex(random_bytes(8));
 $seller_token=bin2hex(random_bytes(8));
+$tpl=$TXT['admin_paid_msg'];
+$botu=$TXT['bot_username'];
+$msg=strtr($tpl,['{seller_tag}'=>$seller_tag,'{buyer_tag}'=>$buyer_tag,'{bot_username}'=>$botu,'{buyer_token}'=>$buyer_token,'{seller_token}'=>$seller_token]);
+$threading_params=admin_build_threading_params($st);
+$msg_params=$threading_params;
+$msg_params['chat_id']=$cid;
+$msg_params['text']=$msg;
+$msg_params['parse_mode']='HTML';
+$msg_params['disable_web_page_preview']=true;
+$res=admin_send_group_message_with_thread_guard($cid,$msg_params,$st);
+$admin_paid_msg_id=0;
+if(!isset($res['ok'])||!$res['ok']){
+    $alert=$TXT['admin_paid_send_error']??'';
+    if($alert===''){$alert='Error';}
+    $desc=trim((string)($res['description']??''));
+    if($desc!==''){$alert.="\n".$desc;}
+    api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$alert,'show_alert'=>true]);
+    return;
+}
+$st['phase']='done';
 $st['link_tokens']=['buyer'=>$buyer_token,'seller'=>$seller_token];
 $st['link_tokens_used']=['buyer'=>null,'seller'=>null];
 if(isset($st['receipts'])&&is_array($st['receipts'])){
@@ -1123,24 +1143,13 @@ $rmid=(int)($info['msg_id']??0);
 if($rmid>0){api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$rmid,'reply_markup'=>json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE)]);}
 }
 }
-$st['phase']='done';
-$tpl=$TXT['admin_paid_msg'];
-$botu=$TXT['bot_username'];
-$msg=strtr($tpl,['{seller_tag}'=>$seller_tag,'{buyer_tag}'=>$buyer_tag,'{bot_username}'=>$botu,'{buyer_token}'=>$buyer_token,'{seller_token}'=>$seller_token]);
-$topic_id=(int)($st['topic_id']??0);
-$msg_params=['chat_id'=>$cid,'text'=>$msg,'parse_mode'=>'HTML','disable_web_page_preview'=>true];
-if($topic_id>0){
-    $msg_params['message_thread_id']=$topic_id;
-}
-$res=api('sendMessage',$msg_params);
 $admin_paid_msg_id=0;
-if(isset($res['ok'])&&$res['ok']){
-    $admin_paid_msg_id=(int)($res['result']['message_id']??0);
-    $sent_thread_id=(int)($res['result']['message_thread_id']??0);
-    if($sent_thread_id>0&&$sent_thread_id!==$topic_id){
-        $topic_id=$sent_thread_id;
-        $st['topic_id']=$topic_id;
-    }
+$admin_paid_msg_id=(int)($res['result']['message_id']??0);
+$topic_id=(int)($st['topic_id']??0);
+$sent_thread_id=(int)($res['result']['message_thread_id']??0);
+if($sent_thread_id>0&&$sent_thread_id!==$topic_id){
+    $topic_id=$sent_thread_id;
+    $st['topic_id']=$topic_id;
 }
 $st['admin_paid_msg_id']=$admin_paid_msg_id;
 save_state($cid,$st);
