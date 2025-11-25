@@ -1043,23 +1043,38 @@ if(strpos($data,'card_type:')===0){
     $kb_with_change['inline_keyboard'][]=[['text'=>$BTN['change_method'],'callback_data'=>'back_method']];
     $sticker_mid=null;
     $sticker_sent=false;
+    $text_mid=null;
     $sticker=trim($type['sticker']??'');
+
+    $msg_params=['chat_id'=>$cid,'text'=>$text,'parse_mode'=>'HTML','disable_web_page_preview'=>true];
+    $include_kb_on_text=($sticker==='');
+    if($include_kb_on_text){
+        $msg_params['reply_markup']=json_encode($kb_with_change,JSON_UNESCAPED_UNICODE);
+    }
+    $text_res=api('sendMessage',$msg_params);
+    if(isset($text_res['ok'])&&$text_res['ok']){
+        $text_mid=$text_res['result']['message_id']??null;
+    }
+
     if($sticker!==''){
-        $res=api('sendSticker',['chat_id'=>$cid,'sticker'=>$sticker,'reply_markup'=>json_encode($kb_paid_only,JSON_UNESCAPED_UNICODE)]);
+        $sticker_params=['chat_id'=>$cid,'sticker'=>$sticker,'reply_markup'=>json_encode($kb_with_change,JSON_UNESCAPED_UNICODE)];
+        if($text_mid){
+            $sticker_params['reply_to_message_id']=$text_mid;
+            $sticker_params['allow_sending_without_reply']=true;
+        }
+        $res=api('sendSticker',$sticker_params);
         if(isset($res['ok'])&&$res['ok']){
             $sticker_mid=$res['result']['message_id']??null;
             $sticker_sent=true;
         }
     }
-    if(!$sticker_sent){
-        $msg_params=['chat_id'=>$cid,'text'=>$text,'parse_mode'=>'HTML','disable_web_page_preview'=>true];
-        if($sticker_mid){
-            $msg_params['reply_to_message_id']=$sticker_mid;
-            $msg_params['allow_sending_without_reply']=true;
+
+    if(!$sticker_sent&&!$include_kb_on_text){
+        if($text_mid){
+            api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$text_mid,'reply_markup'=>json_encode($kb_with_change,JSON_UNESCAPED_UNICODE)]);
         }else{
-            $msg_params['reply_markup']=json_encode($kb_with_change,JSON_UNESCAPED_UNICODE);
+            api('sendMessage',['chat_id'=>$cid,'text'=>$text,'parse_mode'=>'HTML','disable_web_page_preview'=>true,'reply_markup'=>json_encode($kb_with_change,JSON_UNESCAPED_UNICODE)]);
         }
-        api('sendMessage',$msg_params);
     }
     api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE)]);
     $st['phase']='card_info_shown';
@@ -1079,8 +1094,17 @@ if($data==='back_method'){
 if(!in_array(($st['phase']??''),['pay_auto','card_info_shown','card_select'])){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
 $st['phase']='method';
 save_state($cid,$st);
-api('editMessageText',['chat_id'=>$cid,'message_id'=>$mid,'text'=>$TXT['method_title'],'parse_mode'=>'HTML']);
-api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode(method_kb(),JSON_UNESCAPED_UNICODE)]);
+    $reply_markup=json_encode(method_kb(),JSON_UNESCAPED_UNICODE);
+    if(isset($msg['text'])&&$msg['text']!==''){
+        api('editMessageText',['chat_id'=>$cid,'message_id'=>$mid,'text'=>$TXT['method_title'],'parse_mode'=>'HTML']);
+        api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>$reply_markup]);
+    }elseif(isset($msg['caption'])){
+        api('editMessageCaption',['chat_id'=>$cid,'message_id'=>$mid,'caption'=>$TXT['method_title'],'parse_mode'=>'HTML']);
+        api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>$reply_markup]);
+    }else{
+        api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE)]);
+        api('sendMessage',['chat_id'=>$cid,'text'=>$TXT['method_title'],'parse_mode'=>'HTML','reply_markup'=>$reply_markup]);
+    }
 api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT['back_to_method']]);
 return;
 }
