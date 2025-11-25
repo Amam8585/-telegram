@@ -282,6 +282,45 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
             api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['sent']]);
             return true;
         }
+        if (strpos($data, 'regen_pass:') === 0) {
+            $gid = admin_extract_callback_gid($data, 'regen_pass:');
+            if ($gid === '') {
+                api('answerCallbackQuery', ['callback_query_id' => $qid]);
+                return true;
+            }
+            $gs = load_state($gid);
+            if (!$gs) {
+                api('answerCallbackQuery', ['callback_query_id' => $qid]);
+                return true;
+            }
+            $gs['seller_pass'] = generate_trade_password();
+            save_state($gid, $gs);
+            $payload = build_admin_info_message($gid, $gs);
+            $adm_text = $payload['text'] ?? '';
+            $reply_markup = $payload['reply_markup'] ?? '';
+            if (is_array($gs['admin_info_msgs'] ?? null)) {
+                foreach ($gs['admin_info_msgs'] as $aid => $mid) {
+                    $aid = (int) $aid;
+                    $mid = (int) $mid;
+                    if ($aid <= 0 || $mid <= 0) {
+                        continue;
+                    }
+                    $params = [
+                        'chat_id' => $aid,
+                        'message_id' => $mid,
+                        'text' => $adm_text,
+                        'parse_mode' => 'HTML',
+                        'disable_web_page_preview' => true,
+                    ];
+                    if ($reply_markup !== '') {
+                        $params['reply_markup'] = $reply_markup;
+                    }
+                    api('editMessageText', $params);
+                }
+            }
+            api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['sent']]);
+            return true;
+        }
         if (strpos($data, 'seller_code_expired:') === 0) {
             $gid = admin_extract_callback_gid($data, 'seller_code_expired:');
             if ($gid === '') {
