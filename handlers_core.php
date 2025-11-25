@@ -995,12 +995,8 @@ if(empty($types)){
     api('answerCallbackQuery',['callback_query_id'=>$qid]);
     return;
 }
-$prompt=$TXT['card_select_title']??'';
-if($prompt===''){$prompt='<b>نوع کارت مورد نظر را انتخاب کنید</b>';}
-$amount_info=card_build_payment_text('', '', $total);
-if($amount_info!==''){
-    $prompt=$amount_info;
-}
+    $prompt=$TXT['card_select_title']??'';
+    if($prompt===''){$prompt='<b>نوع کارت مورد نظر را انتخاب کنید</b>';}
 $rows=[];
 $fallback_label=$TXT['card_type_fallback_label']??'کارت';
 $buttons=[];
@@ -1076,6 +1072,10 @@ if(strpos($data,'card_type:')===0){
             api('sendMessage',['chat_id'=>$cid,'text'=>$text,'parse_mode'=>'HTML','disable_web_page_preview'=>true,'reply_markup'=>json_encode($kb_with_change,JSON_UNESCAPED_UNICODE)]);
         }
     }
+    $st['card_messages']=[
+        'text'=>$text_mid,
+        'sticker'=>$sticker_mid,
+    ];
     api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE)]);
     $st['phase']='card_info_shown';
     $st['total']=$total;
@@ -1092,17 +1092,29 @@ if(strpos($data,'card_type:')===0){
 }
 if($data==='back_method'){
 if(!in_array(($st['phase']??''),['pay_auto','card_info_shown','card_select'])){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
+$card_messages=$st['card_messages']??[];
+$deleted_current=false;
+if(is_array($card_messages)){
+    foreach($card_messages as $cmid){
+        if(!$cmid){continue;}
+        api('deleteMessage',['chat_id'=>$cid,'message_id'=>$cmid]);
+        if($cmid===$mid){$deleted_current=true;}
+    }
+    unset($st['card_messages']);
+}
 $st['phase']='method';
 save_state($cid,$st);
     $reply_markup=json_encode(method_kb(),JSON_UNESCAPED_UNICODE);
-    if(isset($msg['text'])&&$msg['text']!==''){
+    if(!$deleted_current&&isset($msg['text'])&&$msg['text']!==''){
         api('editMessageText',['chat_id'=>$cid,'message_id'=>$mid,'text'=>$TXT['method_title'],'parse_mode'=>'HTML']);
         api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>$reply_markup]);
-    }elseif(isset($msg['caption'])){
+    }elseif(!$deleted_current&&isset($msg['caption'])){
         api('editMessageCaption',['chat_id'=>$cid,'message_id'=>$mid,'caption'=>$TXT['method_title'],'parse_mode'=>'HTML']);
         api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>$reply_markup]);
     }else{
-        api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE)]);
+        if(!$deleted_current){
+            api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE)]);
+        }
         api('sendMessage',['chat_id'=>$cid,'text'=>$TXT['method_title'],'parse_mode'=>'HTML','reply_markup'=>$reply_markup]);
     }
 api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT['back_to_method']]);
