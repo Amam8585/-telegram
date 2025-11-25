@@ -3,6 +3,9 @@ function api($m,$p,$multi=false){
     if(isset($GLOBALS['__telegram_api_hook']) && is_callable($GLOBALS['__telegram_api_hook'])){
         return call_user_func($GLOBALS['__telegram_api_hook'],$m,$p,$multi);
     }
+    if($m==='sendMessage' && isset($p['parse_mode']) && strtoupper((string)$p['parse_mode'])==='HTML' && isset($p['text'])){
+        $p['text']=telegram_normalize_html_text($p['text']);
+    }
     $ch=curl_init();
     curl_setopt_array($ch,[CURLOPT_URL=>'https://api.telegram.org/bot'.BOT_TOKEN.'/'.$m,CURLOPT_POST=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_POSTFIELDS=>$p]);
     if($multi){curl_setopt($ch,CURLOPT_HTTPHEADER,[]);} $r=curl_exec($ch);curl_close($ch);return json_decode($r,true);
@@ -13,7 +16,11 @@ function telegram_normalize_html_text($text){
         return $text;
     }
     $search=['<br>','<br/>','<br />'];
-    return str_ireplace($search,PHP_EOL,$text);
+    $text=str_ireplace($search,PHP_EOL,$text);
+    $text=preg_replace('#<blockquote>\s+#u','<blockquote>',$text);
+    $text=preg_replace('#\s+</blockquote>#u','</blockquote>',$text);
+    $text=preg_replace("#\n{2,}<blockquote>#u","\n<blockquote>",$text);
+    return $text;
 }
 function admin_all_ids(){static $cache=null;if($cache!==null)return $cache;$ids=[];if(defined('ADMIN_IDS')){$raw=ADMIN_IDS;if(!is_array($raw)){$raw=[$raw];}foreach($raw as $id){$id=trim((string)$id);if($id!==''){$ids[]=$id;}}}elseif(defined('ADMIN_ID')){$ids[]=(string)ADMIN_ID;}$cache=$ids;return $cache;}
 function admin_primary_id(){ $ids=admin_all_ids();return $ids?($ids[0]):'';}
