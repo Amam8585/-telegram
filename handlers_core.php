@@ -665,71 +665,16 @@ return;
                     api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['seller_info_ok'],'parse_mode'=>'HTML']);
                     if(empty($st['notified_admin'])){
                         $st['notified_admin']=true;
-                        $glink=ensure_admin_group_link($gid,$st);
-                        $user_link_tpl=$TXT['user_link_template']??'';
-                        $view_profile=$TXT['admin_profile_view_label']??'';
-                        $missing_html=$TXT['admin_info_missing_value']??'<b>نامشخص</b>';
-                        $missing_plain=trim(strip_tags($missing_html));
-                        $seller_id=(int)($st['seller_id']??0);
-                        $seller_username=$st['seller_username']??'';
-                        $seller_link_label=$seller_username!==''?'@'.$seller_username:$view_profile;
-                        $seller_tag=$seller_id>0
-                            ? ($user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$seller_id,'{label}'=>$seller_link_label]):$seller_link_label)
-                            : $missing_html;
-                        $buyer_id=(int)($st['buyer_id']??0);
-                        $buyer_username=$st['buyer_username']??'';
-                        $buyer_link_label=$buyer_username!==''?'@'.$buyer_username:$view_profile;
-                        $buyer_tag=$buyer_id>0
-                            ? ($user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$buyer_id,'{label}'=>$buyer_link_label]):$buyer_link_label)
-                            : $missing_html;
-                        $seller_email_txt=trim($st['seller_email']??'');
-                        $seller_email_plain=$seller_email_txt!==''?htmlspecialchars($seller_email_txt):$missing_plain;
-                        $seller_email_html=$seller_email_txt!==''?'<b>'.htmlspecialchars($seller_email_txt).'</b>':$missing_html;
                         if(($st['seller_pass']??'')===''){
                             $st['seller_pass']=generate_trade_password();
                             save_state($gid,$st);
                         }
-                        $seller_pass_txt=$st['seller_pass']??'';
-                        $seller_pass_plain=$seller_pass_txt!==''?htmlspecialchars($seller_pass_txt):$missing_plain;
-                        $seller_pass_html=$seller_pass_txt!==''?'<b>'.htmlspecialchars($seller_pass_txt).'</b>':$missing_html;
-                        $buyer_email_txt=trim($st['buyer_email']??'');
-                        $buyer_email_plain=$buyer_email_txt!==''?htmlspecialchars($buyer_email_txt):$missing_plain;
-                        $buyer_email_html=$buyer_email_txt!==''?'<b>'.htmlspecialchars($buyer_email_txt).'</b>':$missing_html;
-                        $info_tpl=$TXT['admin_info_template']??'';
-                        if($info_tpl!==''){
-                            $adm_text=strtr($info_tpl,[
-                                '{buyer}'=>$buyer_tag,
-                                '{buyer_email}'=>$buyer_email_plain,
-                                '{seller}'=>$seller_tag,
-                                '{seller_email}'=>$seller_email_plain,
-                                '{seller_pass}'=>$seller_pass_plain,
-                            ]);
-                        }else{
-                            $adm_text=$TXT['admin_info_title']."\n"
-                                .$TXT['admin_info_buyer'].$buyer_tag."\n"
-                                .$TXT['admin_info_buyer_email']."\n".$buyer_email_html."\n"
-                                .$TXT['admin_info_seller'].$seller_tag."\n"
-                                .$TXT['admin_info_email']."\n".$seller_email_html."\n"
-                                .$TXT['admin_info_pass']."\n".$seller_pass_html;
+                        $payload=build_admin_info_message($gid,$st);
+                        $adm_text=$payload['text']??'';
+                        $reply_markup=$payload['reply_markup']??'';
+                        if($reply_markup===''){
+                            $reply_markup=json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE);
                         }
-                        $kb_rows=[
-                            [
-                                ['text'=>$BTN['admin_request_code'],'callback_data'=>'req_code:'.$gid]
-                            ],
-                            [
-                                ['text'=>$BTN['admin_msg_seller'],'callback_data'=>'msg_seller:'.$gid],
-                                ['text'=>$BTN['admin_msg_buyer'],'callback_data'=>'msg_buyer:'.$gid]
-                            ],
-                            [
-                                ['text'=>$BTN['seller_wrong'],'callback_data'=>'seller_bad:'.$gid]
-                            ],
-                            [
-                                $glink!==''
-                                    ? ['text'=>$BTN['admin_group'],'url'=>$glink]
-                                    : ['text'=>$BTN['admin_group'],'callback_data'=>'no_group:'.$gid]
-                            ]
-                        ];
-                        $kb=['inline_keyboard'=>$kb_rows];
                         $admin_info_msgs=[];
                         if(is_array($st['admin_info_msgs']??null)){
                             $admin_info_msgs=$st['admin_info_msgs'];
@@ -746,7 +691,7 @@ return;
                                 'text'=>$adm_text,
                                 'parse_mode'=>'HTML',
                                 'disable_web_page_preview'=>true,
-                                'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)
+                                'reply_markup'=>$reply_markup
                             ];
                             $res=api('sendMessage',$params);
                             if(isset($res['ok'])&&$res['ok']){
@@ -806,6 +751,7 @@ return;
                 $st['fee_acc_check']=$acc_check_fee;
                 $st['fee']=$base+$extra+$misc;
                 $st['total']=$amount+$base+$extra+$misc+$kycfee+$acc_check_fee;
+                $st['trade_code']=generate_trade_code();
                 $st['phase']='invoice';
                 $st['amt_acks']=[];
                 save_state($cid,$st);
@@ -1083,6 +1029,9 @@ if(strpos($data,'card_type:')===0){
     save_state($cid,$st);
     $notice_tpl=$TXT['card_selected_notice']??'';
     $notice=$notice_tpl!==''?strtr($notice_tpl,['{title}'=>$type['title']!==''?$type['title']:($TXT['card_type_fallback_label']??'')]):'';
+    if($mid>0){
+        api('deleteMessage',['chat_id'=>$cid,'message_id'=>$mid]);
+    }
     if($notice!==''){
         api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$notice]);
     }else{
@@ -1126,8 +1075,15 @@ if(!in_array(($st['phase']??''),['card_info_shown','await_receipt','await_admin_
     $generic_user=$TXT['user_generic_label']??'';
     $mention=$un?('@'.$un):($user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$uid,'{label}'=>$generic_user]):$generic_user);
 api('sendMessage',['chat_id'=>$cid,'text'=>$mention.' '.$TXT['card_send_receipt_prompt'],'parse_mode'=>'HTML']);
-$st['phase']='await_receipt';
-save_state($cid,$st);
+    $card_messages=$st['card_messages']??[];
+    if(is_array($card_messages)){
+        foreach($card_messages as $cmid){
+            if(!$cmid){continue;}
+            api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$cmid,'reply_markup'=>json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE)]);
+        }
+    }
+    $st['phase']='await_receipt';
+    save_state($cid,$st);
 api('answerCallbackQuery',['callback_query_id'=>$qid]);
 return;
 }
