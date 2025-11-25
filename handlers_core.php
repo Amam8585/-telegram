@@ -390,6 +390,13 @@ return;
             if((string)($st['seller_id']??'')===(string)$uid){$known_role='seller';}
             $ctx=resolve_plan_user_context($uid,$st,$chat_id);
             if($ctx['role']!==null){$known_role=$ctx['role'];}
+            $expected_id=$role==='buyer'?(int)($st['buyer_id']??0):(int)($st['seller_id']??0);
+            if($expected_id>0&&$expected_id!==$uid){
+                $deny_key=$role==='buyer'?'link_not_allowed_for_buyer':'link_not_allowed_for_seller';
+                $deny_txt=$TXT[$deny_key]??($TXT['invalid_link']??'');
+                api('sendMessage',['chat_id'=>$uid,'text'=>$deny_txt,'parse_mode'=>'HTML']);
+                return;
+            }
             if($known_role==='buyer'&&$role==='seller'){
                 api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_wrong_for_buyer'],'parse_mode'=>'HTML']);
                 return;
@@ -449,6 +456,13 @@ return;
             if((string)($st['seller_id']??'')===(string)$uid){$known_role='seller';}
             $ctx=resolve_plan_user_context($uid,$st,$info['chat_id']);
             if($ctx['role']!==null){$known_role=$ctx['role'];}
+            $expected_id=$info['role']==='buyer'?(int)($st['buyer_id']??0):(int)($st['seller_id']??0);
+            if($expected_id>0&&$expected_id!==$uid){
+                $deny_key=$info['role']==='buyer'?'link_not_allowed_for_buyer':'link_not_allowed_for_seller';
+                $deny_txt=$TXT[$deny_key]??($TXT['invalid_link']??'');
+                api('sendMessage',['chat_id'=>$uid,'text'=>$deny_txt,'parse_mode'=>'HTML']);
+                return;
+            }
             if($known_role==='buyer'&&$info['role']==='seller'){
                 api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['link_wrong_for_buyer'],'parse_mode'=>'HTML']);
                 return;
@@ -1028,21 +1042,25 @@ if(strpos($data,'card_type:')===0){
     $kb_with_change=$kb_paid_only;
     $kb_with_change['inline_keyboard'][]=[['text'=>$BTN['change_method'],'callback_data'=>'back_method']];
     $sticker_mid=null;
+    $sticker_sent=false;
     $sticker=trim($type['sticker']??'');
     if($sticker!==''){
         $res=api('sendSticker',['chat_id'=>$cid,'sticker'=>$sticker,'reply_markup'=>json_encode($kb_paid_only,JSON_UNESCAPED_UNICODE)]);
         if(isset($res['ok'])&&$res['ok']){
             $sticker_mid=$res['result']['message_id']??null;
+            $sticker_sent=true;
         }
     }
-    $msg_params=['chat_id'=>$cid,'text'=>$text,'parse_mode'=>'HTML','disable_web_page_preview'=>true];
-    if($sticker_mid){
-        $msg_params['reply_to_message_id']=$sticker_mid;
-        $msg_params['allow_sending_without_reply']=true;
-    }else{
-        $msg_params['reply_markup']=json_encode($kb_with_change,JSON_UNESCAPED_UNICODE);
+    if(!$sticker_sent){
+        $msg_params=['chat_id'=>$cid,'text'=>$text,'parse_mode'=>'HTML','disable_web_page_preview'=>true];
+        if($sticker_mid){
+            $msg_params['reply_to_message_id']=$sticker_mid;
+            $msg_params['allow_sending_without_reply']=true;
+        }else{
+            $msg_params['reply_markup']=json_encode($kb_with_change,JSON_UNESCAPED_UNICODE);
+        }
+        api('sendMessage',$msg_params);
     }
-    api('sendMessage',$msg_params);
     api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE)]);
     $st['phase']='card_info_shown';
     $st['total']=$total;
