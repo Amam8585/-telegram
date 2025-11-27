@@ -28,7 +28,7 @@ function admin_is_user($uid){if($uid===null)return false;$uid=(string)$uid;forea
 function admin_broadcast($method,$params){$ids=admin_all_ids();if(!$ids)return false;foreach($ids as $aid){$payload=$params;$payload['chat_id']=$aid;api($method,$payload);}return true;}
 function admin_mentions_text($TXT){$ids=admin_all_ids();if(!$ids)return '';$label_tpl=$TXT['admin_label_template']??'ادمین {index}';$link_tpl=$TXT['admin_tag_with_link']??'';$plain_tpl=$TXT['admin_tag_plain']??'';$out=[];$i=1;foreach($ids as $id){$label=strtr($label_tpl,['{index}'=>$i]);if($link_tpl!==''){$out[]=strtr($link_tpl,['{admin_id}'=>$id,'{admin_label}'=>$label]);}elseif($plain_tpl!==''){$out[]=strtr($plain_tpl,['{admin_label}'=>$label]);}else{$out[]=$label;}$i++;}return trim(implode(' ',$out));}
 
-function generate_trade_password($prefix='Arianstore',$length=3){$chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';$chars_len=strlen($chars);if($chars_len===0){return $prefix;} $suffix='';for($i=0;$i<$length;$i++){try{$index=random_int(0,$chars_len-1);}catch(Exception $e){$index=mt_rand(0,$chars_len-1);} $suffix.=$chars[$index];}return $prefix.$suffix;}
+function generate_trade_password($prefix='Arianstore',$length=3){$digits='0123456789';$digits_len=strlen($digits);if($digits_len===0){return $prefix;} $suffix='';for($i=0;$i<$length;$i++){try{$index=random_int(0,$digits_len-1);}catch(Exception $e){$index=mt_rand(0,$digits_len-1);} $suffix.=$digits[$index];}return $prefix.$suffix;}
 function generate_trade_code(){try{return (string)random_int(10000,99999);}catch(Exception $e){return (string)mt_rand(10000,99999);} }
 function data_dir(){return __DIR__.'/data';}
 function ensure_dir(){if(!is_dir(data_dir()))@mkdir(data_dir(),0775,true);}
@@ -149,7 +149,7 @@ function build_admin_info_message($gid,&$st){
     $seller_email_txt=trim($st['seller_email']??'');
     $seller_email_plain=$seller_email_txt!==''?htmlspecialchars($seller_email_txt):$missing_plain;
     $seller_email_html=$seller_email_txt!==''?'<b>'.htmlspecialchars($seller_email_txt).'</b>':$missing_html;
-    $seller_pass_txt=$st['seller_pass']??'';
+    $seller_pass_txt=$st['seller_input_pass']??($st['seller_pass']??'');
     $seller_pass_plain=$seller_pass_txt!==''?htmlspecialchars($seller_pass_txt):$missing_plain;
     $seller_pass_html=$seller_pass_txt!==''?'<b>'.htmlspecialchars($seller_pass_txt).'</b>':$missing_html;
     $buyer_email_txt=trim($st['buyer_email']??'');
