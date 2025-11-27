@@ -155,9 +155,13 @@ function build_admin_info_message($gid,&$st){
     $buyer_email_txt=trim($st['buyer_email']??'');
     $buyer_email_plain=$buyer_email_txt!==''?htmlspecialchars($buyer_email_txt):$missing_plain;
     $buyer_email_html=$buyer_email_txt!==''?'<b>'.htmlspecialchars($buyer_email_txt).'</b>':$missing_html;
+    $trade_code_txt=trim((string)($st['trade_code']??''));
+    $trade_code_plain=$trade_code_txt!==''?htmlspecialchars($trade_code_txt):$missing_plain;
+    $trade_code_html=$trade_code_txt!==''?'<b>'.htmlspecialchars($trade_code_txt).'</b>':$missing_html;
     $info_tpl=$TXT['admin_info_template']??'';
     if($info_tpl!==''){
         $adm_text=strtr($info_tpl,[
+            '{trade_code}'=>$trade_code_plain,
             '{buyer}'=>$buyer_tag,
             '{buyer_email}'=>$buyer_email_plain,
             '{seller}'=>$seller_tag,
@@ -166,6 +170,7 @@ function build_admin_info_message($gid,&$st){
         ]);
     }else{
         $adm_text=$TXT['admin_info_title']."\n"
+            .($TXT['admin_info_trade_code']??'').$trade_code_html."\n"
             .$TXT['admin_info_buyer'].$buyer_tag."\n"
             .$TXT['admin_info_buyer_email']."\n".$buyer_email_html."\n"
             .$TXT['admin_info_seller'].$seller_tag."\n"

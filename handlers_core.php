@@ -322,14 +322,18 @@ $st['phase']='await_admin_confirm';
 save_state($cid,$st);
 return;
 }
-    if($st&&($st['phase']??'')==='await_seller_log'){
+    if($st&&in_array(($st['phase']??''),['await_seller_log','await_buyer_confirm'],true)){
         $seller_id=(int)($st['seller_id']??0);
         if($seller_id>0&&$uid===$seller_id){
             $has_media=false;
             if(isset($m['photo'])&&is_array($m['photo'])){$has_media=true;}
             if(isset($m['video'])){$has_media=true;}
-            if(isset($m['document'])){$has_media=true;}
             if($has_media){
+                $await_log=is_array($st['await_log']??null)?$st['await_log']:[];
+                $prev_prompt_id=(int)($await_log['prompt_message_id']??0);
+                if($prev_prompt_id>0){
+                    api('deleteMessage',['chat_id'=>$cid,'message_id'=>$prev_prompt_id]);
+                }
                 $buyer_id=(int)($st['buyer_id']??0);
                 $user_link_tpl=$TXT['user_link_template']??'';
                 $missing_html=$TXT['admin_info_missing_value']??'<b>نامشخص</b>';
