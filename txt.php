@@ -28,12 +28,14 @@ $TXT=[
 'admin_info_buyer'=>'<b>خریدار:</b> ',
 'admin_info_buyer_email'=>'<b>جیمیل خام خریدار:</b>',
 'admin_info_template'=>'<b>✅️ اطلاعات معامله جدید ✅️</b>'."\n\n"
+    .'<b>کد معامله: {trade_code}</b>'."\n"
     .'<b>خریدار: {buyer}</b>'."\n"
     .'<b>جیمیل خام خریدار:</b>'."\n".'<b>{buyer_email}</b>'."\n\n"
     .'<b>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _</b>'."\n\n"
     .'<b>فروشنده: {seller}</b>'."\n"
     .'<b>جیمیل اکانت فروشنده:</b>'."\n".'<b>{seller_email}</b>'."\n"
     .'<b>رمز:</b>'."\n".'<b>{seller_pass}</b>',
+'admin_info_trade_code'=>'<b>کد معامله:</b> ',
 'admin_info_missing_value'=>'<b>نامشخص</b>',
 'reply_from_buyer_prefix'=>'<b>پیام از خریدار:</b> ',
 'reply_from_seller_prefix'=>'<b>پیام از فروشنده:</b> ',
