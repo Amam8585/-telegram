@@ -5,9 +5,9 @@ if(isset($u['callback_query'])){handle_cb($u['callback_query']);return;}
 if(isset($u['message'])){handle_msg($u['message']);return;}
 }
 function is_valid_act_pass($p){
-if(preg_match('/[\x{0600}-\x{06FF}]/u',$p))return false;
-if(preg_match('/\s/',$p))return false;
-return (bool)preg_match('/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9!@#$%^&*()\-\_=+\[\]{};:,.?<>\/\\\\|~`]{4,64}$/',$p);
+if(!is_string($p))return false;
+$trim=trim($p);
+return mb_strlen($trim,'UTF-8')>=4;
 }
 function ensure_admin_group_link($gid,&$st){
     if(isset($st['group_username'])&&$st['group_username']!==''){
