@@ -293,31 +293,28 @@ function admin_on_callback($data, $uid, $qid, $cid, $mid, $st)
                 api('answerCallbackQuery', ['callback_query_id' => $qid]);
                 return true;
             }
-            $gs['seller_pass'] = generate_trade_password();
-            save_state($gid, $gs);
-            $payload = build_admin_info_message($gid, $gs);
-            $adm_text = $payload['text'] ?? '';
-            $reply_markup = $payload['reply_markup'] ?? '';
-            if (is_array($gs['admin_info_msgs'] ?? null)) {
-                foreach ($gs['admin_info_msgs'] as $aid => $mid) {
-                    $aid = (int) $aid;
-                    $mid = (int) $mid;
-                    if ($aid <= 0 || $mid <= 0) {
-                        continue;
-                    }
-                    $params = [
-                        'chat_id' => $aid,
-                        'message_id' => $mid,
-                        'text' => $adm_text,
-                        'parse_mode' => 'HTML',
-                        'disable_web_page_preview' => true,
-                    ];
-                    if ($reply_markup !== '') {
-                        $params['reply_markup'] = $reply_markup;
-                    }
-                    api('editMessageText', $params);
+            $current_pass = (string)($gs['seller_pass'] ?? '');
+            $prefix = substr($current_pass, 0, max(0, strlen($current_pass) - 3));
+            if ($prefix === '') {
+                $prefix = 'Arianstore';
+            }
+            $gs['seller_pass'] = generate_trade_password($prefix);
+            admin_update_trade_info_messages($gid, $gs);
+            $buyer_id = (int)($gs['buyer_id'] ?? 0);
+            $seller_pass = (string)($gs['seller_pass'] ?? '');
+            if ($buyer_id > 0 && $seller_pass !== '') {
+                $buyer_tpl = $TXT['finish_change_buyer_pm'] ?? '';
+                if ($buyer_tpl !== '') {
+                    $buyer_text = strtr($buyer_tpl, ['{password}' => $seller_pass]);
+                    $buyer_text = telegram_normalize_html_text($buyer_text);
+                    api('sendMessage', ['chat_id' => $buyer_id, 'text' => $buyer_text, 'parse_mode' => 'HTML']);
+                } else {
+                    $fallback_text = $TXT['send_pass_to_buyer_prefix'] . $seller_pass . $TXT['send_pass_to_buyer_suffix'];
+                    $fallback_text = telegram_normalize_html_text($fallback_text);
+                    api('sendMessage', ['chat_id' => $buyer_id, 'text' => $fallback_text, 'parse_mode' => 'HTML']);
                 }
             }
+            save_state($gid, $gs);
             api('answerCallbackQuery', ['callback_query_id' => $qid, 'text' => $TXT['sent']]);
             return true;
         }

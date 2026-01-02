@@ -200,6 +200,165 @@ function build_admin_info_message($gid,&$st){
     $reply_markup=json_encode(['inline_keyboard'=>$kb_rows],JSON_UNESCAPED_UNICODE);
     return ['text'=>$adm_text,'reply_markup'=>$reply_markup];
 }
+function admin_send_new_trade_messages($gid,array &$st,$adm_text,$reply_markup){
+    $admin_ids=admin_all_ids();
+    if(empty($admin_ids)){
+        return false;
+    }
+    $admin_info_msgs=is_array($st['admin_info_msgs']??null)?$st['admin_info_msgs']:[];
+    $admin_info_pins=is_array($st['admin_info_pins']??null)?$st['admin_info_pins']:[];
+    $sent_any=false;
+    foreach($admin_ids as $aid){
+        $aid=(int)$aid;
+        if($aid<=0){
+            continue;
+        }
+        $params=[
+            'chat_id'=>$aid,
+            'text'=>$adm_text,
+            'parse_mode'=>'HTML',
+            'disable_web_page_preview'=>true
+        ];
+        if($reply_markup!==''){
+            $params['reply_markup']=$reply_markup;
+        }
+        $res=api('sendMessage',$params);
+        if(isset($res['ok'])&&$res['ok']){
+            $sent_any=true;
+            $mid=(int)($res['result']['message_id']??0);
+            if($mid>0){
+                $admin_info_msgs[(string)$aid]=$mid;
+                $pin_res=api('pinChatMessage',[
+                    'chat_id'=>$aid,
+                    'message_id'=>$mid,
+                    'disable_notification'=>true,
+                ]);
+                if(isset($pin_res['ok'])&&$pin_res['ok']){
+                    $admin_info_pins[(string)$aid]=$mid;
+                }
+            }
+        }
+    }
+    if($sent_any){
+        $st['admin_info_msgs']=$admin_info_msgs;
+        if(!empty($admin_info_pins)){
+            $st['admin_info_pins']=$admin_info_pins;
+        }else{
+            unset($st['admin_info_pins']);
+        }
+    }
+    return $sent_any;
+}
+function admin_update_trade_info_messages($gid,array &$st,$adm_text=null,$reply_markup=null){
+    if($adm_text===null||$reply_markup===null){
+        $payload=build_admin_info_message($gid,$st);
+        if($adm_text===null){
+            $adm_text=$payload['text']??'';
+        }
+        if($reply_markup===null){
+            $reply_markup=$payload['reply_markup']??'';
+        }
+    }
+    if($reply_markup===''){
+        $reply_markup=json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE);
+    }
+    $admin_info_msgs=is_array($st['admin_info_msgs']??null)?$st['admin_info_msgs']:[];
+    if(empty($admin_info_msgs)){
+        return admin_send_new_trade_messages($gid,$st,$adm_text,$reply_markup);
+    }
+    $admin_info_pins=is_array($st['admin_info_pins']??null)?$st['admin_info_pins']:[];
+    foreach($admin_info_msgs as $aid_key=>$mid_val){
+        $aid=(int)$aid_key;
+        $mid=(int)$mid_val;
+        if($aid<=0||$mid<=0){
+            continue;
+        }
+        $params=[
+            'chat_id'=>$aid,
+            'message_id'=>$mid,
+            'text'=>$adm_text,
+            'parse_mode'=>'HTML',
+            'disable_web_page_preview'=>true,
+        ];
+        if($reply_markup!==''){
+            $params['reply_markup']=$reply_markup;
+        }
+        $res=api('editMessageText',$params);
+        if(!isset($res['ok'])||!$res['ok']){
+            $send_params=[
+                'chat_id'=>$aid,
+                'text'=>$adm_text,
+                'parse_mode'=>'HTML',
+                'disable_web_page_preview'=>true,
+            ];
+            if($reply_markup!==''){
+                $send_params['reply_markup']=$reply_markup;
+            }
+            $send_res=api('sendMessage',$send_params);
+            if(isset($send_res['ok'])&&$send_res['ok']){
+                $new_mid=(int)($send_res['result']['message_id']??0);
+                if($new_mid>0){
+                    $st['admin_info_msgs'][(string)$aid]=$new_mid;
+                    $admin_info_msgs[(string)$aid]=$new_mid;
+                    $pin_res=api('pinChatMessage',[
+                        'chat_id'=>$aid,
+                        'message_id'=>$new_mid,
+                        'disable_notification'=>true,
+                    ]);
+                    if(isset($pin_res['ok'])&&$pin_res['ok']){
+                        $admin_info_pins[(string)$aid]=$new_mid;
+                    }
+                }
+            }
+        }
+    }
+    if(!empty($admin_info_pins)){
+        $st['admin_info_pins']=$admin_info_pins;
+    }else{
+        unset($st['admin_info_pins']);
+    }
+    return true;
+}
+function admin_notify_new_trade($gid,array &$st,$fallback_chat_id=0){
+    $payload=build_admin_info_message($gid,$st);
+    $adm_text=$payload['text']??'';
+    $reply_markup=$payload['reply_markup']??'';
+    if($reply_markup===''){
+        $reply_markup=json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE);
+    }
+    $sent_any=admin_send_new_trade_messages($gid,$st,$adm_text,$reply_markup);
+    if(!$sent_any&&$fallback_chat_id>0){
+        $params=[
+            'chat_id'=>$fallback_chat_id,
+            'text'=>$adm_text,
+            'parse_mode'=>'HTML',
+            'disable_web_page_preview'=>true
+        ];
+        if($reply_markup!==''){
+            $params['reply_markup']=$reply_markup;
+        }
+        api('sendMessage',$params);
+    }
+    return $sent_any;
+}
+function admin_unpin_trade_messages(array &$st){
+    $pins=is_array($st['admin_info_pins']??null)?$st['admin_info_pins']:[];
+    if(empty($pins)){
+        return;
+    }
+    foreach($pins as $aid=>$mid){
+        $aid=(int)$aid;
+        $mid=(int)$mid;
+        if($aid<=0||$mid<=0){
+            continue;
+        }
+        api('unpinChatMessage',[
+            'chat_id'=>$aid,
+            'message_id'=>$mid,
+        ]);
+    }
+    unset($st['admin_info_pins']);
+}
 function admin_card_editor_path(){ensure_dir();return data_dir().'/card_editor.json';}
 function admin_card_editor_all(){
     $path=admin_card_editor_path();

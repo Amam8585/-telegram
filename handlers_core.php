@@ -531,6 +531,9 @@ return;
             if($ux_role==='buyer'){
                 if(!preg_match('/^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/',$txt)){api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['send_valid_email_buyer'],'parse_mode'=>'HTML']);return;}
                 $st['buyer_email']=$txt;
+                if(!empty($st['admin_info_msgs']??[])){
+                    admin_update_trade_info_messages($gid,$st);
+                }
                 save_state($gid,$st);
                 api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['buyer_email_ok'],'parse_mode'=>'HTML']);
                 return;
@@ -668,54 +671,11 @@ return;
                     save_uctx($uid,['chat_id'=>$gid,'role'=>'seller','need'=>'done','token'=>$st['token']??'']);
                     api('sendMessage',['chat_id'=>$uid,'text'=>$TXT['seller_info_ok'],'parse_mode'=>'HTML']);
                     if(empty($st['notified_admin'])){
-                        $st['notified_admin']=true;
                         if(($st['seller_pass']??'')===''){
                             $st['seller_pass']=generate_trade_password();
-                            save_state($gid,$st);
                         }
-                        $payload=build_admin_info_message($gid,$st);
-                        $adm_text=$payload['text']??'';
-                        $reply_markup=$payload['reply_markup']??'';
-                        if($reply_markup===''){
-                            $reply_markup=json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE);
-                        }
-                        $admin_info_msgs=[];
-                        if(is_array($st['admin_info_msgs']??null)){
-                            $admin_info_msgs=$st['admin_info_msgs'];
-                        }
-                        $admin_ids=admin_all_ids();
-                        $sent_any=false;
-                        foreach($admin_ids as $aid){
-                            $aid=(int)$aid;
-                            if($aid<=0){
-                                continue;
-                            }
-                            $params=[
-                                'chat_id'=>$aid,
-                                'text'=>$adm_text,
-                                'parse_mode'=>'HTML',
-                                'disable_web_page_preview'=>true,
-                                'reply_markup'=>$reply_markup
-                            ];
-                            $res=api('sendMessage',$params);
-                            if(isset($res['ok'])&&$res['ok']){
-                                $sent_any=true;
-                                if(isset($res['result']['message_id'])){
-                                    $admin_info_msgs[(string)$aid]=(int)$res['result']['message_id'];
-                                }
-                            }
-                        }
-                        if(!$sent_any){
-                            api('sendMessage',[
-                                'chat_id'=>$uid,
-                                'text'=>$adm_text,
-                                'parse_mode'=>'HTML',
-                                'disable_web_page_preview'=>true,
-                                'reply_markup'=>json_encode($kb,JSON_UNESCAPED_UNICODE)
-                            ]);
-                        }else{
-                            $st['admin_info_msgs']=$admin_info_msgs;
-                        }
+                        admin_notify_new_trade($gid,$st,$uid);
+                        $st['notified_admin']=true;
                         save_state($gid,$st);
                     }
                     return;
@@ -1221,6 +1181,7 @@ if(strpos($data,'log_confirm:')===0){
     if($final_text!==''){
         api('sendMessage',['chat_id'=>$cid,'text'=>$final_text,'parse_mode'=>'HTML','disable_web_page_preview'=>true]);
     }
+    admin_unpin_trade_messages($st);
     $st['phase']='post_change';
     $st['await_log']=null;
     save_state($cid,$st);
