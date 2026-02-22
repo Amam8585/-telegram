@@ -434,7 +434,17 @@ function card_build_payment_text($card_number,$holder,$total){
     return implode("\n",$lines);
 }
 function need_fb_question($st){$a=$st['kyc']??[];$hasAct=in_array('act',$a);$hasFb=in_array('fb',$a);$hasGg=in_array('gg',$a);return ($hasAct&&$hasFb)||($hasAct&&$hasGg)||($hasGg&&$hasFb&&!$hasAct);}
-function compute_fee($amount){if($amount<0)$amount=0;$k=1000;$mm=1000000;$r=[[0,400*$k,15000],[400*$k,900*$k,20000],[900*$k,1.5*$mm,25000],[1.5*$mm,2*$mm,30000],[2*$mm,2.5*$mm,40000],[2.5*$mm,3*$mm,60000],[3*$mm,3.5*$mm,70000],[3.5*$mm,4*$mm,80000],[4*$mm,4.5*$mm,90000],[4.5*$mm,5*$mm,110000],[5*$mm,5.5*$mm,120000],[5.5*$mm,6*$mm,140000],[6*$mm,6.5*$mm,160000],[6.5*$mm,7*$mm,185000],[7*$mm,7.5*$mm,200000],[7.5*$mm,8*$mm,235000],[8*$mm,8.5*$mm,265000],[8.5*$mm,9*$mm,290000],[9*$mm,10*$mm,345000],[10*$mm,11*$mm,400000],[11*$mm,12*$mm,500000],[12*$mm,13*$mm,650000],[13*$mm,14*$mm,750000],[14*$mm,15*$mm,850000]];foreach($r as $x){if($amount>=$x[0]&&$amount<$x[1])return $x[2];}return 850000;}
+function compute_fee($amount,$mode='normal'){
+if($amount<0)$amount=0;
+$k=1000;$mm=1000000;
+if($amount<50*$k)return 0;
+if($mode!=='economic'&&$mode!=='normal')$mode='normal';
+$normal=[[50*$k,400*$k,20000],[400*$k,900*$k,30000],[900*$k,1.5*$mm,40000],[1.5*$mm,2*$mm,50000],[2*$mm,2.5*$mm,60000],[2.5*$mm,3*$mm,70000],[3*$mm,3.5*$mm,90000],[3.5*$mm,4*$mm,100000],[4*$mm,4.5*$mm,120000],[4.5*$mm,5*$mm,130000],[5*$mm,5.5*$mm,140000],[5.5*$mm,6*$mm,150000],[6*$mm,6.5*$mm,170000],[6.5*$mm,7*$mm,190000],[7*$mm,7.5*$mm,220000],[7.5*$mm,8*$mm,240000],[8*$mm,8.5*$mm,280000],[8.5*$mm,9*$mm,300000],[9*$mm,10*$mm,350000],[10*$mm,11*$mm,450000],[11*$mm,12*$mm,600000],[12*$mm,13*$mm,700000],[13*$mm,14*$mm,900000],[14*$mm,15*$mm,1000000]];
+$economic=[[50*$k,400*$k,15000],[400*$k,900*$k,20000],[900*$k,1.5*$mm,25000],[1.5*$mm,2*$mm,30000],[2*$mm,2.5*$mm,45000],[2.5*$mm,3*$mm,60000],[3*$mm,3.5*$mm,70000],[3.5*$mm,4*$mm,80000],[4*$mm,4.5*$mm,90000],[4.5*$mm,5*$mm,110000],[5*$mm,5.5*$mm,120000],[5.5*$mm,6*$mm,140000],[6*$mm,6.5*$mm,160000],[6.5*$mm,7*$mm,185000],[7*$mm,7.5*$mm,200000],[7.5*$mm,8*$mm,235000],[8*$mm,8.5*$mm,265000],[8.5*$mm,9*$mm,290000],[9*$mm,10*$mm,345000],[10*$mm,11*$mm,400000],[11*$mm,12*$mm,550000],[12*$mm,13*$mm,650000],[13*$mm,14*$mm,750000],[14*$mm,15*$mm,850000]];
+$ranges=$mode==='economic'?$economic:$normal;
+foreach($ranges as $x){if($amount>=$x[0]&&$amount<$x[1])return $x[2];}
+return $ranges[count($ranges)-1][2];
+}
 function calc_gateway_fee_toman($toman){$fee=(int)round($toman*0.005);if($fee>12000)$fee=12000;if($fee<0)$fee=0;return $fee;}
 function get_total($st){$amount=(int)($st['amount']??0);$fee_base=(int)($st['fee_base']??($st['fee']??0));$fee_extra=(int)($st['fee_extra_change']??0);$fee_misc=(int)($st['fee_misc']??0);$kyc=(int)($st['kyc_fee']??0);$check_on=(bool)($st['acc_check_on']??true);$check_fee=(int)($st['fee_acc_check']??($check_on?5000:0));if(!$check_on){$check_fee=0;}return $amount+$fee_base+$fee_extra+$fee_misc+$kyc+$check_fee;}
 function get_total_with_gateway($st){$base=get_total($st);$gw=0;if(($st['pay_method']??'')==='auto'){$gw=calc_gateway_fee_toman($base);}return $base+$gw;}
