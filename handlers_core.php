@@ -716,21 +716,21 @@ return;
                 $st['fee']=$base+$extra+$misc;
                 $st['total']=$amount+$base+$extra+$misc+$kycfee+$acc_check_fee;
                 $st['trade_code']=generate_trade_code();
-                if(!isset($st['trade_mode'])||($st['trade_mode']!=='economic'&&$st['trade_mode']!=='normal')){$st['trade_mode']='normal';}
-                $st['phase']='invoice';
-                $st['amt_acks']=[];
+                $st['pending_invoice']=[
+                    'amount'=>$st['amount'],
+                    'fee_base'=>$st['fee_base'],
+                    'fee_extra_change'=>$st['fee_extra_change'],
+                    'fee_misc'=>$st['fee_misc'],
+                    'kyc_fee'=>$st['kyc_fee'],
+                    'fee_acc_check'=>$st['fee_acc_check'],
+                    'fee'=>$st['fee'],
+                    'total'=>$st['total'],
+                    'trade_code'=>$st['trade_code'],
+                ];
+                $st['invoice_ready']=false;
+                $st['phase']='trade_mode';
                 save_state($cid,$st);
-                $msg=api('sendMessage',[
-                    'chat_id'=>$cid,
-                    'text'=>invoice_text($st),
-                    'parse_mode'=>'HTML',
-                    'reply_markup'=>json_encode(invoice_kb($st,$uid,false),JSON_UNESCAPED_UNICODE),
-                ]);
-                api('pinChatMessage',[
-                    'chat_id'=>$cid,
-                    'message_id'=>$msg['result']['message_id']??null,
-                    'disable_notification'=>true,
-                ]);
+                api('sendMessage',['chat_id'=>$cid,'text'=>$TXT['trade_mode_title'],'parse_mode'=>'HTML','reply_markup'=>json_encode(trade_mode_kb(),JSON_UNESCAPED_UNICODE)]);
                 return;
             }
         }
@@ -855,9 +855,9 @@ if(!isset($st['amt_acks'])){$st['amt_acks']=[];}
 $st['amt_acks'][$uid]=true;
 save_state($cid,$st);
 api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE)]);
-$st['phase']='trade_mode';
+$st['phase']='method';
 save_state($cid,$st);
-api('sendMessage',['chat_id'=>$cid,'text'=>$TXT['trade_mode_title'],'parse_mode'=>'HTML','reply_markup'=>json_encode(trade_mode_kb(),JSON_UNESCAPED_UNICODE)]);
+api('sendMessage',['chat_id'=>$cid,'text'=>$TXT['method_title'],'parse_mode'=>'HTML','reply_markup'=>json_encode(method_kb(),JSON_UNESCAPED_UNICODE)]);
 api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT['ack_done']]);
 return;
 }
@@ -869,11 +869,45 @@ if($mode!=='economic'&&$mode!=='normal'){
     api('answerCallbackQuery',['callback_query_id'=>$qid]);
     return;
 }
+$pending=$st['pending_invoice']??null;
+if(!is_array($pending)){
+    $st['phase']='await_price';
+    $st['invoice_ready']=false;
+    $st['amt_acks']=[];
+    save_state($cid,$st);
+    api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE)]);
+    send_price_prompt($cid,$TXT['await_price'],$uid,$msg,$msg['message_id']??null);
+    api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT['edited_price_ack']??($TXT['ack_done']??'')]);
+    return;
+}
 $st['trade_mode']=$mode;
-$st['phase']='method';
+$st['amount']=(int)($pending['amount']??0);
+$st['fee_base']=(int)($pending['fee_base']??0);
+$st['fee_extra_change']=(int)($pending['fee_extra_change']??0);
+$st['fee_misc']=(int)($pending['fee_misc']??0);
+$st['kyc_fee']=(int)($pending['kyc_fee']??0);
+$st['fee_acc_check']=(int)($pending['fee_acc_check']??0);
+$st['fee']=(int)($pending['fee']??0);
+$st['total']=(int)($pending['total']??0);
+$st['trade_code']=(string)($pending['trade_code']??'');
+if($st['trade_code']===''){$st['trade_code']=generate_trade_code();}
+$st['phase']='invoice';
+$st['amt_acks']=[];
+$st['invoice_ready']=true;
+unset($st['pending_invoice']);
 save_state($cid,$st);
 api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE)]);
-api('sendMessage',['chat_id'=>$cid,'text'=>$TXT['method_title'],'parse_mode'=>'HTML','reply_markup'=>json_encode(method_kb(),JSON_UNESCAPED_UNICODE)]);
+$invoice_msg=api('sendMessage',[
+    'chat_id'=>$cid,
+    'text'=>invoice_text($st),
+    'parse_mode'=>'HTML',
+    'reply_markup'=>json_encode(invoice_kb($st,$uid,false),JSON_UNESCAPED_UNICODE),
+]);
+api('pinChatMessage',[
+    'chat_id'=>$cid,
+    'message_id'=>$invoice_msg['result']['message_id']??null,
+    'disable_notification'=>true,
+]);
 $ack_key=$mode==='economic'?'trade_mode_selected_economic':'trade_mode_selected_normal';
 api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT[$ack_key]??($TXT['ack_done']??'')]);
 return;
