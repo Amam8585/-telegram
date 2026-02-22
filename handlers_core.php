@@ -1131,11 +1131,18 @@ $seller_username=$st['seller_username']??'';
     $seller_label=$seller_username!==''?'@'.$seller_username:($TXT['seller_label']??'');
     $seller_tag=$user_link_tpl!==''?strtr($user_link_tpl,['{user_id}'=>$seller_id,'{label}'=>$seller_label]):$seller_label;
 }
-$buyer_token=bin2hex(random_bytes(8));
-$seller_token=bin2hex(random_bytes(8));
-$tpl=$TXT['admin_paid_msg'];
-$botu=$TXT['bot_username'];
-$msg=strtr($tpl,['{seller_tag}'=>$seller_tag,'{buyer_tag}'=>$buyer_tag,'{bot_username}'=>$botu,'{buyer_token}'=>$buyer_token,'{seller_token}'=>$seller_token]);
+$trade_mode=(string)($st['trade_mode']??'normal');
+$buyer_token='';
+$seller_token='';
+if($trade_mode==='economic'){
+    $msg=$TXT['admin_paid_msg_economic']??'';
+}else{
+    $buyer_token=bin2hex(random_bytes(8));
+    $seller_token=bin2hex(random_bytes(8));
+    $tpl=$TXT['admin_paid_msg']??'';
+    $botu=$TXT['bot_username']??'';
+    $msg=strtr($tpl,['{seller_tag}'=>$seller_tag,'{buyer_tag}'=>$buyer_tag,'{bot_username}'=>$botu,'{buyer_token}'=>$buyer_token,'{seller_token}'=>$seller_token]);
+}
 $threading_params=admin_build_threading_params($st);
 $msg_params=$threading_params;
 $msg_params['chat_id']=$cid;
@@ -1153,8 +1160,14 @@ if(!isset($res['ok'])||!$res['ok']){
     return;
 }
 $st['phase']='done';
-$st['link_tokens']=['buyer'=>$buyer_token,'seller'=>$seller_token];
-$st['link_tokens_used']=['buyer'=>null,'seller'=>null];
+if($trade_mode==='economic'){
+    $st['link_tokens']=null;
+    $st['link_tokens_used']=['buyer'=>null,'seller'=>null];
+    $st['admin_paid_msg_id']=0;
+}else{
+    $st['link_tokens']=['buyer'=>$buyer_token,'seller'=>$seller_token];
+    $st['link_tokens_used']=['buyer'=>null,'seller'=>null];
+}
 if(isset($st['receipts'])&&is_array($st['receipts'])){
 foreach($st['receipts'] as $r=>$info){
 $rmid=(int)($info['msg_id']??0);
@@ -1169,7 +1182,7 @@ if($sent_thread_id>0&&$sent_thread_id!==$topic_id){
     $topic_id=$sent_thread_id;
     $st['topic_id']=$topic_id;
 }
-$st['admin_paid_msg_id']=$admin_paid_msg_id;
+if($trade_mode!=='economic'){$st['admin_paid_msg_id']=$admin_paid_msg_id;}
 save_state($cid,$st);
 api('answerCallbackQuery',['callback_query_id'=>$qid]);
 return;
