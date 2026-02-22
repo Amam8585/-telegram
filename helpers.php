@@ -44,6 +44,15 @@ function label_tick($on,$txt){return ($on?'✅ ':'⬜ ').$txt;}
 function rules_kb($st,$uid,$locked=false){global $BTN;$kyc=$st['kyc']??[];$on_act=in_array('act',$kyc);$on_fb=in_array('fb',$kyc);$on_gg=in_array('gg',$kyc);$kyc_on=(bool)($st['kyc_on']??false);$misc_on=(bool)($st['misc_on']??false);$check_on=(bool)($st['acc_check_on']??true);$ack_on=isset(($st['acks']??[])[$uid]);$cb=function($x)use($locked){return $locked?'lock':$x;};$rows=[];if(!$misc_on){$rows[]=[['text'=>label_tick($on_gg,$BTN['google']),'callback_data'=>$cb('tgl_gg')],['text'=>label_tick($on_fb,$BTN['facebook']),'callback_data'=>$cb('tgl_fb')],['text'=>label_tick($on_act,$BTN['activision']),'callback_data'=>$cb('tgl_act')]];}$rows[]=[['text'=>($kyc_on?$BTN['kyc_on']:$BTN['kyc_off']),'callback_data'=>$cb('tgl_kyc')],['text'=>($misc_on?$BTN['misc_on']:$BTN['misc_off']),'callback_data'=>$cb('tgl_misc')]];$rows[]=[['text'=>($check_on?$BTN['acc_check_on']:$BTN['acc_check_off']),'callback_data'=>$cb('tgl_acc_check')]];$rows[]=[['text'=>($ack_on?$BTN['ack_me_on']:$BTN['ack_me_off']),'callback_data'=>$cb('ack_go')]];return ['inline_keyboard'=>$rows];}
 function fbq_kb($locked=false){global $BTN;$cb=function($x)use($locked){return $locked?'lock':$x;};return ['inline_keyboard'=>[[['text'=>$BTN['fbchg_on'],'callback_data'=>$cb('fbchg_on')],['text'=>$BTN['fbchg_off'],'callback_data'=>$cb('fbchg_off')]]]];}
 function method_kb(){global $BTN;return ['inline_keyboard'=>[[['text'=>$BTN['m_auto'],'callback_data'=>'m_auto'],['text'=>$BTN['m_card'],'callback_data'=>'m_card']]]];}
+function trade_mode_kb(){
+    global $BTN;
+    return [
+        'inline_keyboard'=>[[
+            ['text'=>$BTN['trade_mode_normal']??'⚗️ | روش عادی','callback_data'=>'trade_mode:normal'],
+            ['text'=>$BTN['trade_mode_economic']??'🧸 | روش اقتصادی','callback_data'=>'trade_mode:economic'],
+        ]],
+    ];
+}
 function card_types_path(){ensure_dir();return data_dir().'/card_types.json';}
 function card_type_normalize(array $item){
     $id=trim((string)($item['id']??''));
@@ -447,6 +456,7 @@ function invoice_text($st){
     $p_check_tpl=$TXT['invoice_acc_check_notice']??'';
     $p_check_plain=$TXT['invoice_acc_check_plain']??'';
     $p_gw=$TXT['invoice_gateway_plain']??'';
+    $p_trade_mode=$TXT['invoice_trade_mode_plain']??'';
     $trade_raw=trim((string)($TXT['invoice_trade_code_plain']??''));
     $p_trade=rtrim($trade_raw,":： \t");
     $t_title=$normalize($TXT['invoice_total_title_plain']??'');
@@ -466,6 +476,11 @@ function invoice_text($st){
     $base_total=get_total($st);
     $gw_fee=(($st['pay_method']??'')==='auto')?calc_gateway_fee_toman($base_total):0;
     $trade_code=trim((string)($st['trade_code']??''));
+    $trade_mode=(string)($st['trade_mode']??'normal');
+    if($trade_mode!=='economic'){$trade_mode='normal';}
+    $trade_mode_label=$trade_mode==='economic'
+        ? ($TXT['trade_mode_economic_label']??'اقتصادی')
+        : ($TXT['trade_mode_normal_label']??'عادی');
 
     $out=[];
     if($title!==''){
@@ -476,6 +491,9 @@ function invoice_text($st){
         $trade_label=$p_trade;
         if(substr($trade_label,-1)!==':'){$trade_label.=' :';}
         $out[]='<blockquote><b>'.$trade_label.' '.htmlspecialchars($trade_code,ENT_QUOTES,'UTF-8').'</b></blockquote>';
+    }
+    if($p_trade_mode!==''){
+        $out[]='<blockquote><b>'.$p_trade_mode.' '.htmlspecialchars($trade_mode_label,ENT_QUOTES,'UTF-8').'</b></blockquote>';
     }
     if($amount>0&&$p_acc!==''){
         $line='<blockquote><b>'.$p_acc.' '.number_format($amount);

@@ -66,13 +66,22 @@ $pmid=(int)($st['pay_msg']['mid']??0);
         api('editMessageReplyMarkup',['chat_id'=>$pcid,'message_id'=>$pmid,'reply_markup'=>json_encode(['inline_keyboard'=>[[['text'=>$btn_text,'callback_data'=>'paid_ok_locked']]]],JSON_UNESCAPED_UNICODE)]);
         }
         }
+$trade_mode=(string)($st['trade_mode']??'normal');
+if($trade_mode==='economic'){
+$msg=$TXT['zp_success_message_economic']??'';
+if($msg!==''){
+api('sendMessage',['chat_id'=>$gid,'text'=>$msg,'parse_mode'=>'HTML','disable_web_page_preview'=>true]);
+}
+}else{
 $botu=defined('BOT_USERNAME')?BOT_USERNAME:'';
 $buyer_link=$botu!==''?('https://t.me/'.$botu.'?start=get_'.$buyer_token):'';
 $seller_link=$botu!==''?('https://t.me/'.$botu.'?start=get_'.$seller_token):'';
 $seller_section='';
-if($seller_link!==''){$seller_tpl=$TXT['zp_success_seller_line']??'';$seller_section=$seller_tpl!==''?strtr($seller_tpl,['{seller_link}'=>$seller_link]):$seller_link."\n";}
+if($seller_link!==''){$seller_tpl=$TXT['zp_success_seller_line']??'';$seller_section=$seller_tpl!==''?strtr($seller_tpl,['{seller_link}'=>$seller_link]):$seller_link."
+";}
 $buyer_section='';
-if($buyer_link!==''){$buyer_tpl=$TXT['zp_success_buyer_line']??'';$buyer_section=$buyer_tpl!==''?strtr($buyer_tpl,['{buyer_link}'=>$buyer_link]):$buyer_link."\n";}
+if($buyer_link!==''){$buyer_tpl=$TXT['zp_success_buyer_line']??'';$buyer_section=$buyer_tpl!==''?strtr($buyer_tpl,['{buyer_link}'=>$buyer_link]):$buyer_link."
+";}
 $msg_tpl=$TXT['zp_success_message']??'';
 $msg=$msg_tpl!==''?strtr($msg_tpl,[
 '{ref_id}'=>htmlspecialchars((string)$ref),
@@ -81,6 +90,7 @@ $msg=$msg_tpl!==''?strtr($msg_tpl,[
 '{buyer_section}'=>$buyer_section,
 ]):'';
 api('sendMessage',['chat_id'=>$gid,'text'=>$msg,'parse_mode'=>'HTML','disable_web_page_preview'=>true]);
+}
 echo 'OK';
 exit;
 }
