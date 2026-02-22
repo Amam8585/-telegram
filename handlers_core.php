@@ -702,29 +702,22 @@ return;
                     send_price_prompt($cid,$TXT['min_price'],$uid,$m,$m['message_id']??null);
                     return;
                 }
-                $base=compute_fee($amount);
                 $extra=((isset($st['fb_change'])&&$st['fb_change']===true)?10000:0);
                 $misc=((bool)($st['misc_on']??false))?10000:0;
                 $kycfee=((bool)($st['kyc_on']??false))?5000:0;
                 $acc_check_fee=((bool)($st['acc_check_on']??true))?5000:0;
                 $st['amount']=$amount;
-                $st['fee_base']=$base;
                 $st['fee_extra_change']=$extra;
                 $st['fee_misc']=$misc;
                 $st['kyc_fee']=$kycfee;
                 $st['fee_acc_check']=$acc_check_fee;
-                $st['fee']=$base+$extra+$misc;
-                $st['total']=$amount+$base+$extra+$misc+$kycfee+$acc_check_fee;
                 $st['trade_code']=generate_trade_code();
                 $st['pending_invoice']=[
                     'amount'=>$st['amount'],
-                    'fee_base'=>$st['fee_base'],
                     'fee_extra_change'=>$st['fee_extra_change'],
                     'fee_misc'=>$st['fee_misc'],
                     'kyc_fee'=>$st['kyc_fee'],
                     'fee_acc_check'=>$st['fee_acc_check'],
-                    'fee'=>$st['fee'],
-                    'total'=>$st['total'],
                     'trade_code'=>$st['trade_code'],
                 ];
                 $st['invoice_ready']=false;
@@ -882,13 +875,13 @@ if(!is_array($pending)){
 }
 $st['trade_mode']=$mode;
 $st['amount']=(int)($pending['amount']??0);
-$st['fee_base']=(int)($pending['fee_base']??0);
+$st['fee_base']=compute_fee($st['amount'],$mode);
 $st['fee_extra_change']=(int)($pending['fee_extra_change']??0);
 $st['fee_misc']=(int)($pending['fee_misc']??0);
 $st['kyc_fee']=(int)($pending['kyc_fee']??0);
 $st['fee_acc_check']=(int)($pending['fee_acc_check']??0);
-$st['fee']=(int)($pending['fee']??0);
-$st['total']=(int)($pending['total']??0);
+$st['fee']=$st['fee_base']+$st['fee_extra_change']+$st['fee_misc'];
+$st['total']=$st['amount']+$st['fee']+$st['kyc_fee']+$st['fee_acc_check'];
 $st['trade_code']=(string)($pending['trade_code']??'');
 if($st['trade_code']===''){$st['trade_code']=generate_trade_code();}
 $st['phase']='invoice';
