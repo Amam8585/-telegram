@@ -716,6 +716,7 @@ return;
                 $st['fee']=$base+$extra+$misc;
                 $st['total']=$amount+$base+$extra+$misc+$kycfee+$acc_check_fee;
                 $st['trade_code']=generate_trade_code();
+                if(!isset($st['trade_mode'])||($st['trade_mode']!=='economic'&&$st['trade_mode']!=='normal')){$st['trade_mode']='normal';}
                 $st['phase']='invoice';
                 $st['amt_acks']=[];
                 save_state($cid,$st);
@@ -854,12 +855,28 @@ if(!isset($st['amt_acks'])){$st['amt_acks']=[];}
 $st['amt_acks'][$uid]=true;
 save_state($cid,$st);
 api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE)]);
-$st['phase']='method';
+$st['phase']='trade_mode';
 save_state($cid,$st);
-api('sendMessage',['chat_id'=>$cid,'text'=>$TXT['method_title'],'parse_mode'=>'HTML','reply_markup'=>json_encode(method_kb(),JSON_UNESCAPED_UNICODE)]);
+api('sendMessage',['chat_id'=>$cid,'text'=>$TXT['trade_mode_title'],'parse_mode'=>'HTML','reply_markup'=>json_encode(trade_mode_kb(),JSON_UNESCAPED_UNICODE)]);
 api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT['ack_done']]);
 return;
 }
+}
+if(strpos($data,'trade_mode:')===0){
+if(($st['phase']??'')!=='trade_mode'){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
+$mode=substr($data,11);
+if($mode!=='economic'&&$mode!=='normal'){
+    api('answerCallbackQuery',['callback_query_id'=>$qid]);
+    return;
+}
+$st['trade_mode']=$mode;
+$st['phase']='method';
+save_state($cid,$st);
+api('editMessageReplyMarkup',['chat_id'=>$cid,'message_id'=>$mid,'reply_markup'=>json_encode(['inline_keyboard'=>[]],JSON_UNESCAPED_UNICODE)]);
+api('sendMessage',['chat_id'=>$cid,'text'=>$TXT['method_title'],'parse_mode'=>'HTML','reply_markup'=>json_encode(method_kb(),JSON_UNESCAPED_UNICODE)]);
+$ack_key=$mode==='economic'?'trade_mode_selected_economic':'trade_mode_selected_normal';
+api('answerCallbackQuery',['callback_query_id'=>$qid,'text'=>$TXT[$ack_key]??($TXT['ack_done']??'')]);
+return;
 }
 if($data==='m_auto'){
 if(($st['phase']??'')!=='method'){api('answerCallbackQuery',['callback_query_id'=>$qid]);return;}
