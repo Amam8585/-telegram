@@ -41,7 +41,7 @@ function load_uctx($uid){$p=ust_path($uid);if(file_exists($p)){$j=file_get_conte
 function save_uctx($uid,$a){file_put_contents(ust_path($uid),json_encode($a,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),LOCK_EX);}
 function list_plan_files(){ensure_dir();$g=glob(data_dir().'/plan_*.json');return $g?$g:[];}
 function label_tick($on,$txt){return ($on?'✅ ':'⬜ ').$txt;}
-function rules_kb($st,$uid,$locked=false){global $BTN;$kyc=$st['kyc']??[];$on_act=in_array('act',$kyc);$on_fb=in_array('fb',$kyc);$on_gg=in_array('gg',$kyc);$kyc_on=(bool)($st['kyc_on']??false);$misc_on=(bool)($st['misc_on']??false);$check_on=(bool)($st['acc_check_on']??true);$ack_on=isset(($st['acks']??[])[$uid]);$cb=function($x)use($locked){return $locked?'lock':$x;};$rows=[];if(!$misc_on){$rows[]=[['text'=>label_tick($on_gg,$BTN['google']),'callback_data'=>$cb('tgl_gg')],['text'=>label_tick($on_fb,$BTN['facebook']),'callback_data'=>$cb('tgl_fb')],['text'=>label_tick($on_act,$BTN['activision']),'callback_data'=>$cb('tgl_act')]];}$rows[]=[['text'=>($kyc_on?$BTN['kyc_on']:$BTN['kyc_off']),'callback_data'=>$cb('tgl_kyc')],['text'=>($misc_on?$BTN['misc_on']:$BTN['misc_off']),'callback_data'=>$cb('tgl_misc')]];$rows[]=[['text'=>($check_on?$BTN['acc_check_on']:$BTN['acc_check_off']),'callback_data'=>$cb('tgl_acc_check')]];$rows[]=[['text'=>($ack_on?$BTN['ack_me_on']:$BTN['ack_me_off']),'callback_data'=>$cb('ack_go')]];return ['inline_keyboard'=>$rows];}
+function rules_kb($st,$uid,$locked=false){global $BTN;$kyc=$st['kyc']??[];$on_act=in_array('act',$kyc);$on_fb=in_array('fb',$kyc);$on_gg=in_array('gg',$kyc);$kyc_on=(bool)($st['kyc_on']??false);$misc_on=(bool)($st['misc_on']??false);$check_on=(bool)($st['acc_check_on']??false);$ack_on=isset(($st['acks']??[])[$uid]);$cb=function($x)use($locked){return $locked?'lock':$x;};$rows=[];if(!$misc_on){$rows[]=[['text'=>label_tick($on_gg,$BTN['google']),'callback_data'=>$cb('tgl_gg')],['text'=>label_tick($on_fb,$BTN['facebook']),'callback_data'=>$cb('tgl_fb')],['text'=>label_tick($on_act,$BTN['activision']),'callback_data'=>$cb('tgl_act')]];}$rows[]=[['text'=>($kyc_on?$BTN['kyc_on']:$BTN['kyc_off']),'callback_data'=>$cb('tgl_kyc')],['text'=>($misc_on?$BTN['misc_on']:$BTN['misc_off']),'callback_data'=>$cb('tgl_misc')]];$rows[]=[['text'=>($check_on?$BTN['acc_check_on']:$BTN['acc_check_off']),'callback_data'=>$cb('tgl_acc_check')]];$rows[]=[['text'=>($ack_on?$BTN['ack_me_on']:$BTN['ack_me_off']),'callback_data'=>$cb('ack_go')]];return ['inline_keyboard'=>$rows];}
 function fbq_kb($locked=false){global $BTN;$cb=function($x)use($locked){return $locked?'lock':$x;};return ['inline_keyboard'=>[[['text'=>$BTN['fbchg_on'],'callback_data'=>$cb('fbchg_on')],['text'=>$BTN['fbchg_off'],'callback_data'=>$cb('fbchg_off')]]]];}
 function method_kb(){global $BTN;return ['inline_keyboard'=>[[['text'=>$BTN['m_auto'],'callback_data'=>'m_auto'],['text'=>$BTN['m_card'],'callback_data'=>'m_card']]]];}
 function trade_mode_kb(){
@@ -446,7 +446,7 @@ foreach($ranges as $x){if($amount>=$x[0]&&$amount<$x[1])return $x[2];}
 return $ranges[count($ranges)-1][2];
 }
 function calc_gateway_fee_toman($toman){$fee=(int)round($toman*0.005);if($fee>12000)$fee=12000;if($fee<0)$fee=0;return $fee;}
-function get_total($st){$amount=(int)($st['amount']??0);$fee_base=(int)($st['fee_base']??($st['fee']??0));$fee_extra=(int)($st['fee_extra_change']??0);$fee_misc=(int)($st['fee_misc']??0);$kyc=(int)($st['kyc_fee']??0);$check_on=(bool)($st['acc_check_on']??true);$check_fee=(int)($st['fee_acc_check']??($check_on?5000:0));if(!$check_on){$check_fee=0;}return $amount+$fee_base+$fee_extra+$fee_misc+$kyc+$check_fee;}
+function get_total($st){$amount=(int)($st['amount']??0);$fee_base=(int)($st['fee_base']??($st['fee']??0));$fee_extra=(int)($st['fee_extra_change']??0);$fee_misc=(int)($st['fee_misc']??0);$kyc=(int)($st['kyc_fee']??0);$check_on=(bool)($st['acc_check_on']??false);$check_fee=(int)($st['fee_acc_check']??($check_on?10000:0));if(!$check_on){$check_fee=0;}return $amount+$fee_base+$fee_extra+$fee_misc+$kyc+$check_fee;}
 function get_total_with_gateway($st){$base=get_total($st);$gw=0;if(($st['pay_method']??'')==='auto'){$gw=calc_gateway_fee_toman($base);}return $base+$gw;}
 function invoice_text($st){
     global $TXT;
@@ -481,8 +481,8 @@ function invoice_text($st){
     $kycfee=(int)($st['kyc_fee']??0);
     $fbchg=(int)($st['fee_extra_change']??0);
     $misc=(int)($st['fee_misc']??0);
-    $check_on=(bool)($st['acc_check_on']??true);
-    $checkfee=$check_on?(int)($st['fee_acc_check']??5000):0;
+    $check_on=(bool)($st['acc_check_on']??false);
+    $checkfee=$check_on?(int)($st['fee_acc_check']??10000):0;
     $base_total=get_total($st);
     $gw_fee=(($st['pay_method']??'')==='auto')?calc_gateway_fee_toman($base_total):0;
     $trade_code=trim((string)($st['trade_code']??''));
