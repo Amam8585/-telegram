@@ -1135,7 +1135,8 @@ $trade_mode=(string)($st['trade_mode']??'normal');
 $buyer_token='';
 $seller_token='';
 if($trade_mode==='economic'){
-    $msg=$TXT['admin_paid_msg_economic']??'';
+    $tpl=$TXT['admin_paid_msg_economic']??'';
+    $msg=strtr($tpl,['{seller_tag}'=>$seller_tag,'{buyer_tag}'=>$buyer_tag]);
 }else{
     $buyer_token=bin2hex(random_bytes(8));
     $seller_token=bin2hex(random_bytes(8));
