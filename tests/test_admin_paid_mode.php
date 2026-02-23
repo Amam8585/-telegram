@@ -93,6 +93,15 @@ if (!$ecoSend || strpos((string)($ecoSend['params']['text'] ?? ''), 'لینک و
 if ($ecoSend && strpos((string)($ecoSend['params']['text'] ?? ''), 'توضیح روش معامله') === false) {
     $errors[] = 'economic message text mismatch';
 }
+if ($ecoSend && strpos((string)($ecoSend['params']['text'] ?? ''), '<blockquote>') === false) {
+    $errors[] = 'economic message should include blockquote';
+}
+if ($ecoSend && strpos((string)($ecoSend['params']['text'] ?? ''), 'tg://user?id=10001') === false) {
+    $errors[] = 'economic message should mention buyer';
+}
+if ($ecoSend && strpos((string)($ecoSend['params']['text'] ?? ''), 'tg://user?id=10002') === false) {
+    $errors[] = 'economic message should mention seller';
+}
 if (!$normSend || strpos((string)($normSend['params']['text'] ?? ''), 'لینک ورود خریدار') === false) {
     $errors[] = 'normal message should include buyer link';
 }
